@@ -63,8 +63,22 @@ jobs:
       - name: Build the Fabric mod
         working-directory: ${{ env.MOD_DIR }}
         run: |
+          set -o pipefail
           chmod +x gradlew
-          ./gradlew build --stacktrace
+          ./gradlew build --stacktrace 2>&1 | tee /tmp/azyron-build.log
+      - name: Report build failure to commit (CI diagnostics)
+        if: failure()
+        working-directory: ${{ env.MOD_DIR }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          LOG_TAIL=$(tail -n 160 /tmp/azyron-build.log 2>/dev/null \
+            | sed -e 's/\x1b\[[0-9;]*m//g' || echo 'no log captured')
+          BODY=$(printf '**AZYRON CI build failed** — step: Build the Fabric mod. Last 160 lines (ANSI stripped):\n\n```\n%s\n```' "$LOG_TAIL")
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
+            -f body="$BODY" >/dev/null
+          echo "Diagnostics comment posted on commit $GITHUB_SHA"
       - name: Show resolved pins
         working-directory: ${{ env.MOD_DIR }}
         run: ./gradlew printPins
