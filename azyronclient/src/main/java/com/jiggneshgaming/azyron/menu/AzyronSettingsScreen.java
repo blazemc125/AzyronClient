@@ -11,6 +11,7 @@ import net.minecraft.client.gui.screen.Screen;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.gui.Click;
 
 /**
  * AZYRON CLIENT — global settings screen.
@@ -327,7 +328,10 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
     /* --------------------------- events ---------------------------- */
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(Click click, boolean doubled) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (button == 0) {
             layoutRows();
             AzyronConfigModel config = AzyronConfig.get();
@@ -369,11 +373,14 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, doubled);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (dragging != null && button == 0) {
             for (Row row : rows) {
                 if (row instanceof SliderRow && ((SliderRow) row).slider == dragging) {
@@ -382,16 +389,19 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        return super.mouseDragged(click, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(Click click) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (dragging != null) {
             dragging = null;
             AzyronConfig.save();
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(click);
     }
 }

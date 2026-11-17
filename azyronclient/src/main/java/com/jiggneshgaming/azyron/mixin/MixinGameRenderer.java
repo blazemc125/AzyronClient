@@ -5,7 +5,8 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyReturnValue;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Applies AZYRON's eased zoom to the effective FOV.
@@ -17,18 +18,18 @@ import org.spongepowered.asm.mixin.injection.ModifyReturnValue;
 @Mixin(GameRenderer.class)
 public abstract class MixinGameRenderer {
 
-    @ModifyReturnValue(method = "getFov", at = @At("RETURN"))
-    private float azyronclient$applyZoomFov(float original) {
+    @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
+    private void azyronclient$applyZoomFov(CallbackInfoReturnable<Float> cir) {
         // Mark the mixin as operational so the FOV-slider fallback stays off.
         ZoomManager.fovMixinActive = true;
         try {
             float zoom = ZoomManager.effectiveZoom();
             if (zoom <= 1.01F) {
-                return original;
+                return;
             }
-            return com.jiggneshgaming.azyron.core.zoom.ZoomMath.targetFov(original, zoom);
+            cir.setReturnValue(com.jiggneshgaming.azyron.core.zoom.ZoomMath.targetFov(cir.getReturnValue(), zoom));
         } catch (Throwable ignored) {
-            return original;
+            // Leave vanilla FOV untouched.
         }
     }
 }

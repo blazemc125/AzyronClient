@@ -9,6 +9,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.Click;
 
 /**
  * AZYRON CLIENT — cosmetics.
@@ -224,7 +225,10 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
     /* --------------------------- events ---------------------------- */
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(Click click, boolean doubled) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (button == 0) {
             int cardW = 132;
             int cardH = 122;
@@ -244,6 +248,6 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, doubled);
     }
 }

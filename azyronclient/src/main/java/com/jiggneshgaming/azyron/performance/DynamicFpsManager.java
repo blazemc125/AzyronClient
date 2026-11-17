@@ -40,7 +40,8 @@ public final class DynamicFpsManager {
             return;
         }
 
-        boolean focused = client.getWindow().isFocused();
+        boolean focused = org.lwjgl.glfw.GLFW.glfwGetWindowAttrib(
+                client.getWindow().getHandle(), org.lwjgl.glfw.GLFW.GLFW_FOCUSED) == 1;
         if (!focused && !limited) {
             try {
                 Object maxFps = client.options.getMaxFps();

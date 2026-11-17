@@ -11,6 +11,8 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.input.KeyInput;
 
 /**
  * AZYRON CLIENT — HUD editor.
@@ -95,7 +97,10 @@ public final class HudEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(Click click, boolean doubled) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         int footerY = this.height - 26;
         int btnW = 110;
         int resetX = this.width / 2 - btnW - 8;
@@ -128,37 +133,44 @@ public final class HudEditorScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, doubled);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (dragging != null && button == 0) {
             AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(dragging);
             pos.x = (int) mouseX - dragOffsetX;
             pos.y = (int) mouseY - dragOffsetY;
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        return super.mouseDragged(click, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(Click click) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (dragging != null && button == 0) {
             dragging = null;
             AzyronConfig.save();
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(click);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyInput input) {
+        int keyCode = input.key();
         if (keyCode == 256) { // GLFW_KEY_ESCAPE
             this.close();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(input);
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.jiggneshgaming.azyron.sprint;
 
 import com.jiggneshgaming.azyron.config.AzyronConfig;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.ClientPlayerEntity;
+import net.minecraft.client.network.ClientPlayerEntity;
 
 /**
  * AZYRON CLIENT — toggle sprint.

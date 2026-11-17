@@ -6,7 +6,7 @@ import com.jiggneshgaming.azyron.util.ReflectionUtil;
 import com.jiggneshgaming.azyron.util.TextHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GraphicsMode;
-import net.minecraft.client.option.ParticlesMode;
+import net.minecraft.particle.ParticlesMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,7 +79,7 @@ public final class ProfileManager {
         try {
             GraphicsMode[] values = GraphicsMode.values();
             GraphicsMode target = values[Math.max(0, Math.min(values.length - 1, mode))];
-            options.getGraphicsMode().setValue(target);
+            options.getPreset().setValue(target);
         } catch (Throwable t) {
             LOGGER.warn("Could not apply graphics mode {}: {}", mode, t.toString());
         }

@@ -12,6 +12,8 @@ import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.gui.Click;
+import net.minecraft.client.input.KeyInput;
 
 /**
  * AZYRON CLIENT — shared scaffold for all AZYRON screens.
@@ -71,7 +73,10 @@ public abstract class BaseAzyronScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(Click click, boolean doubled) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
         if (button == 0) {
             for (AzyronButton btn : buttons) {
                 if (btn.enabled && btn.contains(mouseX, mouseY) && btn.action != null) {
@@ -80,17 +85,18 @@ public abstract class BaseAzyronScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(click, doubled);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyInput input) {
+        int keyCode = input.key();
         // GLFW_KEY_ESCAPE — sub-screens return to their parent, top-level closes.
         if (keyCode == 256) {
             goBack();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(input);
     }
 
     protected void goBack() {

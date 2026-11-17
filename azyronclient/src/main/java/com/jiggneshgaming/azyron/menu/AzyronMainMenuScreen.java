@@ -145,11 +145,11 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
     /** Scale-rendered gradient logo text using the model matrix. */
     private void drawScaled(DrawContext ctx, TextRenderer tr, int x, int y, float scale,
                             String text, int fromColor, int toColor) {
-        ctx.getMatrices().push();
-        ctx.getMatrices().translate(x, y, 0.0D);
-        ctx.getMatrices().scale(scale, scale, 1.0F);
+        ctx.getMatrices().pushMatrix();
+        ctx.getMatrices().translate((float) x, (float) y);
+        ctx.getMatrices().scale(scale, scale);
         RenderUtil.drawGradientText(ctx, tr, text, 0, 0, fromColor, toColor, true);
-        ctx.getMatrices().pop();
+        ctx.getMatrices().popMatrix();
     }
 
     /** Concentric-ring crest with a gradient "A". */
@@ -170,12 +170,12 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
         // Gradient A glyph
         String a = "A";
         int glyphWidth = tr.getWidth(a);
-        ctx.getMatrices().push();
-        ctx.getMatrices().translate(cx - glyphWidth * 2.6D, cy - 18.0D, 0.0D);
-        ctx.getMatrices().scale(5.2F, 5.2F, 1.0F);
+        ctx.getMatrices().pushMatrix();
+        ctx.getMatrices().translate((float) (cx - glyphWidth * 2.6D), (float) (cy - 18.0D));
+        ctx.getMatrices().scale(5.2F, 5.2F);
         RenderUtil.drawGradientText(ctx, tr, a, 0, 0,
                 AzyronConstants.COLOR_PURPLE_BRIGHT, AzyronConstants.COLOR_ELECTRIC, true);
-        ctx.getMatrices().pop();
+        ctx.getMatrices().popMatrix();
     }
 
     private static void drawRing(DrawContext ctx, int cx, int cy, int radius, int thickness, int color) {
