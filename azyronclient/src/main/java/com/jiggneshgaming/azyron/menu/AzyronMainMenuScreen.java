@@ -12,6 +12,10 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.option.LanguageOptionsScreen;
+import net.minecraft.client.gui.screen.option.OptionsScreen;
+import net.minecraft.client.language.LanguageManager;
+import net.minecraft.client.option.GameOptions;
 
 /**
  * AZYRON CLIENT — premium main menu.
@@ -23,6 +27,9 @@ import net.minecraft.client.gui.screen.Screen;
  */
 public final class AzyronMainMenuScreen extends BaseAzyronScreen {
 
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger("azyronclient/mainmenu");
+
     private AzyronButton profileChip;
 
     public AzyronMainMenuScreen() {
@@ -31,23 +38,35 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
 
     @Override
     protected void buildButtons() {
+        // The complete vanilla main menu, plus the AZYRON entries.
+        // Singleplayer / Multiplayer / Options / Language / Quit match the
+        // vanilla title screen 1:1; Mods / Cosmetics / Settings are the
+        // AZYRON additions. Layout tightens itself on small screens.
         int buttonWidth = 216;
-        int buttonHeight = 26;
-        int gap = 9;
+        int buttonHeight = 24;
+        int gap = 8;
+        int pitch = buttonHeight + gap;
+        int count = 8;
+        int y = (int) (this.height * 0.24D);
+        y = Math.min(y, this.height - count * pitch - 18); // never collide with the footer
+        y = Math.max(64, y);
         int x = Math.max(28, (int) (this.width * 0.065D));
-        int y = (int) (this.height * 0.40D);
 
         addButton("Singleplayer", x, y, buttonWidth, buttonHeight,
                 () -> ScreenNav.openSingleplayer(MinecraftClient.getInstance(), this));
-        addButton("Multiplayer", x, y + (buttonHeight + gap), buttonWidth, buttonHeight,
+        addButton("Multiplayer", x, y + pitch, buttonWidth, buttonHeight,
                 () -> ScreenNav.openMultiplayer(MinecraftClient.getInstance(), this));
-        addButton("Cosmetics", x, y + (buttonHeight + gap) * 2, buttonWidth, buttonHeight,
-                () -> MinecraftClient.getInstance().setScreen(new AzyronCosmeticsScreen(this)));
-        addButton("Mods", x, y + (buttonHeight + gap) * 3, buttonWidth, buttonHeight,
+        addButton("Options", x, y + pitch * 2, buttonWidth, buttonHeight,
+                () -> openOptions());
+        addButton("Language", x, y + pitch * 3, buttonWidth, buttonHeight,
+                () -> openLanguage());
+        addButton("Mods", x, y + pitch * 4, buttonWidth, buttonHeight,
                 () -> MinecraftClient.getInstance().setScreen(new AzyronModsMenuScreen(this)));
-        addButton("Settings", x, y + (buttonHeight + gap) * 4, buttonWidth, buttonHeight,
+        addButton("Cosmetics", x, y + pitch * 5, buttonWidth, buttonHeight,
+                () -> MinecraftClient.getInstance().setScreen(new AzyronCosmeticsScreen(this)));
+        addButton("Settings", x, y + pitch * 6, buttonWidth, buttonHeight,
                 () -> MinecraftClient.getInstance().setScreen(new AzyronSettingsScreen(this)));
-        addButton("Quit Game", x, y + (buttonHeight + gap) * 5, buttonWidth, buttonHeight,
+        addButton("Quit Game", x, y + pitch * 7, buttonWidth, buttonHeight,
                 AzyronMainMenuScreen::quitGame);
 
         // Profile chip — click to cycle POTATO → BALANCED → SMOOTH.
@@ -65,6 +84,37 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
         int discordW = 216;
         addButton("Join Discord", this.width - discordW - 30, this.height - 92,
                 discordW, 26, () -> Links.open(AzyronConstants.DISCORD_INVITE));
+    }
+
+    /** Vanilla Options screen — the same one the vanilla title screen opens. */
+    private void openOptions() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        try {
+            GameOptions options = client.options;
+            if (options == null) {
+                LOGGER.error("Game options not ready — cannot open the Options screen yet.");
+                return;
+            }
+            client.setScreen(new OptionsScreen(this, options));
+        } catch (Throwable t) {
+            LOGGER.error("Could not open the Options screen", t);
+        }
+    }
+
+    /** Vanilla Language screen — needs the client's LanguageManager (package-private field). */
+    private void openLanguage() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        try {
+            Object manager = com.jiggneshgaming.azyron.util.ReflectionUtil.getField(client, "languageManager");
+            if (!(manager instanceof LanguageManager)) {
+                LOGGER.error("LanguageManager unavailable — cannot open the Language screen.");
+                return;
+            }
+            GameOptions options = client.options;
+            client.setScreen(new LanguageOptionsScreen(this, options, (LanguageManager) manager));
+        } catch (Throwable t) {
+            LOGGER.error("Could not open the Language screen", t);
+        }
     }
 
     private static void cycleProfile() {
@@ -90,7 +140,7 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
     protected void renderContent(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY, float delta) {
         /* ------------------------------ logo ----------------------- */
         int logoX = Math.max(30, (int) (this.width * 0.065D));
-        int logoY = (int) (this.height * 0.09D);
+        int logoY = Math.max(8, (int) (this.height * 0.06D));
 
         // Crest rings behind the logo text block, left side.
         drawCrest(ctx, tr, (int) (this.width * 0.72D), (int) (this.height * 0.34D),

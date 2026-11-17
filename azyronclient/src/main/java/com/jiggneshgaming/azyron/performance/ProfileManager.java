@@ -2,10 +2,10 @@ package com.jiggneshgaming.azyron.performance;
 
 import com.jiggneshgaming.azyron.config.AzyronConfig;
 import com.jiggneshgaming.azyron.core.profile.PerformanceProfile;
-import com.jiggneshgaming.azyron.util.ReflectionUtil;
 import com.jiggneshgaming.azyron.util.TextHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GraphicsMode;
+import net.minecraft.client.option.SimpleOption;
 import net.minecraft.particle.ParticlesMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 /**
  * AZYRON CLIENT — applies the selected performance profile to the game.
  *
- * <p>Direct, stable getters are used where yarn names are known-stable;
- * everything optional goes through reflection so a renamed getter can never
- * crash the game — it just gets skipped with a log line.</p>
+ * <p>Direct, yarn-1.21.11-stable typed accessors are used throughout;
+ * every write is individually guarded so an unexpected option failure can
+ * never crash the game — it is logged and skipped.</p>
  */
 public final class ProfileManager {
 
@@ -61,19 +61,17 @@ public final class ProfileManager {
         }
         net.minecraft.client.option.GameOptions options = client.options;
 
-        // --- direct, stable option writes (each guarded) ---
+        // --- direct, yarn-1.21.11 stable option writes (each guarded) ---
         setGraphicsMode(options, s.graphicsMode);
         setParticles(options, s.particles);
-        setIntOption(options, "getViewDistance", s.viewDistance, "view distance");
-        setIntOption(options, "getSimulationDistance", s.simulationDistance, "simulation distance");
-        setIntOption(options, "getMaxFps", s.maxFps, "max framerate");
-        setIntOption(options, "getMipmapLevels", s.mipmapLevels, "mipmap levels");
-        setDoubleOption(options, "getEntityDistanceScaling", s.entityDistanceScaling, "entity distance scaling");
-
-        // --- best-effort extras via reflection (never fatal) ---
-        setBooleanishOption(options, "getVsync", s.vsync, "vsync");
-        setIntOption(options, "getBiomeBlendRadius", s.biomeBlendRadius, "biome blend radius");
-        setBooleanishOption(options, "getAo", s.smoothLighting, "smooth lighting");
+        setOption(options.getViewDistance(), s.viewDistance, "view distance");
+        setOption(options.getSimulationDistance(), s.simulationDistance, "simulation distance");
+        setOption(options.getMaxFps(), s.maxFps, "max framerate");
+        setOption(options.getMipmapLevels(), s.mipmapLevels, "mipmap levels");
+        setOption(options.getEntityDistanceScaling(), s.entityDistanceScaling, "entity distance scaling");
+        setOption(options.getBiomeBlendRadius(), s.biomeBlendRadius, "biome blend radius");
+        setOption(options.getEnableVsync(), s.vsync, "vsync");
+        setOption(options.getAo(), s.smoothLighting, "smooth lighting");
         setCloudOption(options, s.cloudsEnabled);
     }
 
@@ -106,84 +104,44 @@ public final class ProfileManager {
         }
     }
 
-    private static void setIntOption(net.minecraft.client.option.GameOptions options, String getter,
-                                     int value, String label) {
+    private static <T> void setOption(SimpleOption<T> option, T value, String label) {
+        if (option == null) {
+            LOGGER.debug("Option {} is not available yet — skipped.", label);
+            return;
+        }
         try {
-            Object option = ReflectionUtil.invokeNoArg(options, getter);
-            if (option == null) {
-                return;
-            }
-            java.lang.reflect.Method setValue = option.getClass().getMethod("setValue", Object.class);
-            setValue.invoke(option, Integer.valueOf(value));
+            option.setValue(value);
         } catch (Throwable t) {
-            LOGGER.debug("Option {} unavailable: {}", label, t.toString());
+            LOGGER.debug("Could not apply option {}: {}", label, t.toString());
         }
     }
 
-    private static void setDoubleOption(net.minecraft.client.option.GameOptions options, String getter,
-                                        double value, String label) {
-        try {
-            Object option = ReflectionUtil.invokeNoArg(options, getter);
-            if (option == null) {
-                return;
-            }
-            java.lang.reflect.Method setValue = option.getClass().getMethod("setValue", Object.class);
-            setValue.invoke(option, Double.valueOf(value));
-        } catch (Throwable t) {
-            LOGGER.debug("Option {} unavailable: {}", label, t.toString());
-        }
-    }
-
-    private static void setBooleanishOption(net.minecraft.client.option.GameOptions options, String getter,
-                                            boolean value, String label) {
-        try {
-            Object option = ReflectionUtil.invokeNoArg(options, getter);
-            if (option == null) {
-                return;
-            }
-            // SimpleOption<Boolean>
-            try {
-                java.lang.reflect.Method setValue = option.getClass().getMethod("setValue", Object.class);
-                setValue.invoke(option, Boolean.valueOf(value));
-                return;
-            } catch (NoSuchMethodException direct) {
-                // older/other shapes — try primitive boolean overload
-                java.lang.reflect.Method setValue = option.getClass().getMethod("setValue", boolean.class);
-                setValue.invoke(option, Boolean.valueOf(value));
-            }
-        } catch (Throwable t) {
-            LOGGER.debug("Option {} unavailable: {}", label, t.toString());
-        }
-    }
-
+    @SuppressWarnings({"rawtypes", "unchecked"})
     private static void setCloudOption(net.minecraft.client.option.GameOptions options, boolean enabled) {
         try {
-            Object option = ReflectionUtil.invokeNoArg(options, "getCloudRenderMode", "getClouds");
+            SimpleOption option = options.getCloudRenderMode();
             if (option == null) {
                 return;
             }
-            Object current = option.getClass().getMethod("getValue").invoke(option);
-            if (current == null) {
+            Object current = option.getValue();
+            if (!(current instanceof Enum)) {
                 return;
             }
-            Object value = null;
+            Object off = null;
+            Object fast = null;
             for (Object constant : current.getClass().getEnumConstants()) {
                 String name = ((Enum<?>) constant).name().toUpperCase(java.util.Locale.ROOT);
-                if (enabled ? !"OFF".equals(name) : "OFF".equals(name)) {
-                    if (enabled && ("FAST".equals(name) || "FANCY".equals(name))) {
-                        value = constant;
-                        if ("FAST".equals(name)) {
-                            break;
-                        }
-                    } else if (!enabled && "OFF".equals(name)) {
-                        value = constant;
-                        break;
+                if ("OFF".equals(name)) {
+                    off = constant;
+                } else if ("FAST".equals(name) || "FANCY".equals(name)) {
+                    if (fast == null || "FAST".equals(name)) {
+                        fast = constant; // prefer FAST when both are available
                     }
                 }
             }
-            if (value != null) {
-                java.lang.reflect.Method setValue = option.getClass().getMethod("setValue", Object.class);
-                setValue.invoke(option, value);
+            Object target = enabled ? fast : off;
+            if (target != null) {
+                option.setValue(target);
             }
         } catch (Throwable t) {
             LOGGER.debug("Cloud option unavailable: {}", t.toString());

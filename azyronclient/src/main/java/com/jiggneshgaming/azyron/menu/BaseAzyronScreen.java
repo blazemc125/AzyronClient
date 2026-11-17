@@ -38,7 +38,14 @@ public abstract class BaseAzyronScreen extends Screen {
     @Override
     protected void init() {
         buttons.clear();
-        buildButtons();
+        try {
+            buildButtons();
+        } catch (Throwable t) {
+            // Never propagate out of init — that would kill the screen and,
+            // with it, the whole menu. Buttons are added one by one, so on
+            // failure keep whichever ones made it and log loudly.
+            LOGGER.error("Could not build the AZYRON screen layout — partial menu will be shown.", t);
+        }
     }
 
     protected AzyronButton addButton(String label, int x, int y, int width, int height, Runnable action) {
@@ -53,22 +60,83 @@ public abstract class BaseAzyronScreen extends Screen {
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        MenuBackground.render(ctx, this.width, this.height, System.currentTimeMillis());
-        TextRenderer tr = ClientRefs.textRenderer(MinecraftClient.getInstance());
+        // 1) Background — isolated: if the procedural background ever fails,
+        //    fall back to a plain dark fill so the GUI stays fully visible.
+        try {
+            MenuBackground.render(ctx, this.width, this.height, System.currentTimeMillis());
+        } catch (Throwable t) {
+            logOnce("background", t);
+            ctx.fill(0, 0, this.width, this.height, 0xFF0D0A1A);
+        }
+
+        // 2) Text renderer — the protected field on Screen never fails to
+        //    resolve. Reflection is only a last-resort fallback for paranoia.
+        TextRenderer tr = this.textRenderer;
         if (tr == null) {
-            // Should never happen — log once instead of failing silently, but
-            // keep the background up so the screen is never a dead black void.
+            try {
+                tr = ClientRefs.textRenderer(MinecraftClient.getInstance());
+            } catch (Throwable t) {
+                logOnce("textRenderer", t);
+            }
+        }
+        if (tr == null) {
+            // Should be impossible — but NEVER leave a dead black screen.
+            // Draw the buttons as bare panels so the GUI stays usable.
             if (!warnedMissingFont) {
                 warnedMissingFont = true;
-                LOGGER.error("TextRenderer unavailable — AZYRON menu content cannot be drawn this frame.");
+                LOGGER.error("TextRenderer unavailable — AZYRON menu will draw panels without text.");
+            }
+            for (AzyronButton button : buttons) {
+                button.renderBare(ctx, mouseX, mouseY);
             }
             return;
         }
-        renderContent(ctx, tr, mouseX, mouseY, delta);
-        for (AzyronButton button : buttons) {
-            button.render(ctx, tr, mouseX, mouseY);
+
+        // 3) Content — isolated: a failure in one decorative layer must not
+        //    hide the buttons below it.
+        try {
+            renderContent(ctx, tr, mouseX, mouseY, delta);
+        } catch (Throwable t) {
+            logOnce("content", t);
+            drawErrorBadge(ctx, tr, t);
         }
-        drawFooter(ctx, tr);
+
+        // 4) Buttons — isolated per button.
+        for (AzyronButton button : buttons) {
+            try {
+                button.render(ctx, tr, mouseX, mouseY);
+            } catch (Throwable t) {
+                logOnce("button:" + button.label, t);
+            }
+        }
+
+        // 5) Footer — isolated.
+        try {
+            drawFooter(ctx, tr);
+        } catch (Throwable t) {
+            logOnce("footer", t);
+        }
+    }
+
+    /** One log line per distinct failing phase — never spam the game loop. */
+    private static final java.util.Set<String> REPORTED_PHASES =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    private void logOnce(String phase, Throwable t) {
+        if (REPORTED_PHASES.add(phase)) {
+            LOGGER.error("AZYRON menu phase '{}' failed — continuing without it.", phase, t);
+        }
+    }
+
+    /** Visible, honest error badge — the user always knows something broke. */
+    private void drawErrorBadge(DrawContext ctx, TextRenderer tr, Throwable t) {
+        String line = "AZYRON UI error: " + t.getClass().getSimpleName()
+                + (t.getMessage() != null ? " — " + t.getMessage() : "");
+        int w = Math.min(this.width - 16, tr.getWidth(line) + 16);
+        int x = (this.width - w) / 2;
+        int y = this.height - 64;
+        ctx.fill(x, y, x + w, y + 18, 0xCC7F1D1D);
+        Texts.draw(ctx, tr, line, x + 8, y + 5, 0xFFFFFFFF, false);
     }
 
     /** Footer chrome: version, developer credit and current profile. */
@@ -90,7 +158,11 @@ public abstract class BaseAzyronScreen extends Screen {
         if (button == 0) {
             for (AzyronButton btn : buttons) {
                 if (btn.enabled && btn.contains(mouseX, mouseY) && btn.action != null) {
-                    btn.action.run();
+                    try {
+                        btn.action.run();
+                    } catch (Throwable t) {
+                        LOGGER.error("AZYRON button '{}' action failed", btn.label, t);
+                    }
                     return true;
                 }
             }
@@ -98,12 +170,17 @@ public abstract class BaseAzyronScreen extends Screen {
         return super.mouseClicked(click, doubled);
     }
 
+    /** Android Back (mapped to ESC by the launcher) and desktop ESC. */
     @Override
     public boolean keyPressed(KeyInput input) {
         int keyCode = input.key();
         // GLFW_KEY_ESCAPE — sub-screens return to their parent, top-level closes.
         if (keyCode == 256) {
-            goBack();
+            try {
+                goBack();
+            } catch (Throwable t) {
+                LOGGER.error("Could not navigate back", t);
+            }
             return true;
         }
         return super.keyPressed(input);
@@ -116,7 +193,11 @@ public abstract class BaseAzyronScreen extends Screen {
      */
     public void goBack() {
         MinecraftClient client = MinecraftClient.getInstance();
-        AzyronConfig.save();
+        try {
+            AzyronConfig.save();
+        } catch (Throwable t) {
+            LOGGER.warn("Could not persist the config: {}", t.toString());
+        }
         if (backTarget != null) {
             client.setScreen(backTarget);
             return;
@@ -138,7 +219,11 @@ public abstract class BaseAzyronScreen extends Screen {
 
     @Override
     public void removed() {
-        AzyronConfig.save();
+        try {
+            AzyronConfig.save();
+        } catch (Throwable t) {
+            LOGGER.warn("Could not persist the config on screen close: {}", t.toString());
+        }
     }
 
     @Override

@@ -164,6 +164,62 @@ inspection — **no in-game runtime testing was possible in this environment**.
 (click-through, mixin application at runtime, rendering on device). Verify on
 a desktop Fabric 1.21.11 instance and on PojavLauncher before publishing.
 
+## 5b. Invisible main-menu GUI — root-cause pass (2026-11-17, commit after 5fc6e71)
+
+**Reported:** the complete main-menu GUI was missing in-game — Singleplayer /
+Multiplayer / Options / Language / Quit buttons absent, the AZYRON Mod Menu
+did not open, and only the background, the (launcher) FPS counter and the
+(launcher) mouse overlay were visible.
+
+**Root cause fixed this round (three layers deep):**
+
+1. `BaseAzyronScreen.render(...)` resolved the font via
+   `ClientRefs.textRenderer()` (reflection) and, on ANY failure, returned
+   **silently after drawing only the background** — leaving exactly the
+   reported state: background visible, zero buttons/text, zero errors, and
+   clicks landing on nothing because the button panels were never drawn.
+   The fix: the text renderer is taken DIRECTLY from the `protected final
+   TextRenderer textRenderer` field on `Screen` (zero reflection on the
+   critical path), and every render phase (background / content / buttons /
+   footer) is individually exception-isolated so no single failure can hide
+   the GUI again. If the font is ever unavailable, buttons are still drawn as
+   bare panels (clickable) and a red on-screen error badge names the failure
+   (no silent blank UI). Failing phases log once, never spam.
+2. `ScreenEvents.AFTER_INIT` used to call `setScreen()` **synchronously,
+   nested inside the title screen's init event** — the new screen could end
+   up half-initialized (layout/input not fully wired). The swap is now
+   deferred via `client.execute(...)` and double-checks the title screen is
+   still the current screen before replacing it.
+3. Screen init (`buildButtons`) and button click actions are exception
+   isolated; a broken layout or click handler can no longer kill the screen
+   or the input pipeline.
+
+**Also in this pass**
+
+* The AZYRON main menu now includes **all vanilla main-menu entries**:
+  Singleplayer / Multiplayer / **Options** (vanilla `OptionsScreen`) /
+  **Language** (vanilla `LanguageOptionsScreen`, LanguageManager resolved
+  from the client's package-private field — reflection, logged) / Quit
+  Game — alongside the AZYRON entries (Mods / Cosmetics / Settings).
+  Layout tightens itself on small screens.
+* `HudEditorScreen` uses the direct `this.textRenderer` and isolates broken
+  HUD previews; `PotionNames` uses the direct yarn API
+  (`RegistryEntry.value()` + `StatusEffect.getName()`); `Links` uses
+  `Util.getOperatingSystem().open(URI)`; `Sessions` resolves the UUID via
+  `getUuidOrNull`/`getUuid` (String or UUID) with the authlib profile
+  fallback; `ProfileManager` uses typed `SimpleOption<...>` accessors
+  (view/sim distance, max FPS, mipmap, biome blend, vsync, AO, cloud mode).
+* **Android Back** continues to map to GLFW ESC (`GameActivity` BACK →
+  `sendKeyPress(KEYCODE_ESCAPE)` when no keyboard/controller is active);
+  AZYRON screens translate ESC into `goBack()` (sub-screens → parent,
+  top-level → HUD or the AZYRON main menu). Verified by code inspection of
+  `GameActivity.dispatchKeyEvent`, `GameView`, `KeycodeUtils`.
+
+**Still unverified:** on-device rendering and click-through. CI compiles
+and the core self-tests pass; a real PojavLauncher/desktop session is
+required before publishing. If anything still fails, the new error badge
+will name the failing layer instead of showing a blank screen.
+
 ## 6. Known issues
 
 * **Zoom fallback FOV**: if the FOV mixin fails to apply, zoom temporarily

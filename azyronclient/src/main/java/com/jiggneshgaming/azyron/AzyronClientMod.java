@@ -80,15 +80,29 @@ public final class AzyronClientMod implements ClientModInitializer {
         // 5) Replace the vanilla title screen with the AZYRON main menu.
         //    Every TitleScreen init is replaced (quit-to-title included);
         //    AzyronMainMenuScreen is not a TitleScreen, so no recursion.
+        //    The swap is DEFERRED out of the init event: mutating the current
+        //    screen synchronously inside AFTER_INIT (nested init/resize while
+        //    the title screen is still being constructed) can leave the client
+        //    in a half-initialized state where the screen is set but its
+        //    widgets never receive layout or input. client.execute() re-enters
+        //    on the client thread after the current event completes.
         try {
             ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
                 if (!(screen instanceof TitleScreen)) {
                     return;
                 }
                 try {
-                    client.setScreen(new AzyronMainMenuScreen());
+                    client.execute(() -> {
+                        try {
+                            if (client.currentScreen instanceof TitleScreen) {
+                                client.setScreen(new AzyronMainMenuScreen());
+                            }
+                        } catch (Throwable t) {
+                            LOGGER.error("Could not open the AZYRON main menu — staying on the vanilla title.", t);
+                        }
+                    });
                 } catch (Throwable t) {
-                    LOGGER.error("Could not open the AZYRON main menu — staying on the vanilla title.", t);
+                    LOGGER.error("Could not schedule the AZYRON main menu swap.", t);
                 }
             });
         } catch (Throwable t) {

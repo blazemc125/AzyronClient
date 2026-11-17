@@ -9,6 +9,7 @@ import com.jiggneshgaming.azyron.cps.CpsManager;
 import com.jiggneshgaming.azyron.keys.KeystrokesTracker;
 import com.jiggneshgaming.azyron.sprint.ToggleSprint;
 import com.jiggneshgaming.azyron.util.ClientRefs;
+import com.jiggneshgaming.azyron.util.PotionNames;
 import com.jiggneshgaming.azyron.util.RenderUtil;
 import com.jiggneshgaming.azyron.util.Sessions;
 import com.jiggneshgaming.azyron.util.Texts;

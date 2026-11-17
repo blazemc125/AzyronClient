@@ -37,6 +37,15 @@ public final class AzyronButton {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
+    /** Panel + border only (no text) — used when the font renderer is unavailable. */
+    public void renderBare(DrawContext ctx, int mouseX, int mouseY) {
+        boolean hover = enabled && contains(mouseX, mouseY);
+        int fill = enabled ? (hover ? 0xF02A1A45 : 0xE0160F2C) : 0xD0100A1E;
+        int border = hover ? AzyronConstants.COLOR_ELECTRIC : AzyronConstants.COLOR_PANEL_BORDER;
+        RenderUtil.fillRoundedRect(ctx, x, y, width, height, 6, fill);
+        RenderUtil.drawRoundedBorder(ctx, x, y, width, height, 6, border);
+    }
+
     public void render(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
         boolean hover = enabled && contains(mouseX, mouseY);
         int fillTop = enabled ? (hover ? 0xF03A2459 : 0xE01E1436) : 0xD0140D24;

@@ -3,72 +3,58 @@ package com.jiggneshgaming.azyron.util;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.screen.Screen;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * AZYRON CLIENT — typed accessors for Minecraft internals whose yarn
- * names drift between versions. Everything funnels through reflection with
- * sensible fallbacks; failures are logged once and return null.
+ * names drift between versions.
+ *
+ * <p>Direct typed access is used wherever the field/method visibility and
+ * name are stable (currentScreen, window scaled size). TextRenderer and
+ * Session access stay reflection-based because those members are
+ * package-private (textRenderer) / private (session) in 1.21.11; the helper
+ * degrades gracefully instead of crashing the HUD.</p>
  */
 public final class ClientRefs {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("azyronclient/refs");
+    private static boolean warnedTextRenderer;
 
     private ClientRefs() {
     }
 
     /** TextRenderer regardless of yarn naming (getTextRenderer() vs textRenderer field). */
     public static TextRenderer textRenderer(MinecraftClient client) {
-        try {
-            Object viaMethod = ReflectionUtil.invokeNoArg(client, "getTextRenderer");
-            if (viaMethod instanceof TextRenderer) {
-                return (TextRenderer) viaMethod;
-            }
-            java.lang.reflect.Field field = findField(client.getClass(), "textRenderer");
-            if (field != null) {
-                field.setAccessible(true);
-                Object value = field.get(client);
-                if (value instanceof TextRenderer) {
-                    return (TextRenderer) value;
-                }
-            }
-        } catch (Throwable ignored) {
+        if (client == null) {
+            return null;
+        }
+        Object viaMethod = ReflectionUtil.invokeNoArg(client, "getTextRenderer");
+        if (viaMethod instanceof TextRenderer) {
+            return (TextRenderer) viaMethod;
+        }
+        Object viaField = ReflectionUtil.getField(client, "textRenderer");
+        if (viaField instanceof TextRenderer) {
+            return (TextRenderer) viaField;
+        }
+        if (!warnedTextRenderer) {
+            warnedTextRenderer = true;
+            LOGGER.warn("Could not resolve the TextRenderer — text-based HUD elements will be skipped.");
         }
         return null;
     }
 
-    /** Current screen or null; covers both field and getter namings. */
+    /** Current screen or null (public field on MinecraftClient). */
     public static Screen currentScreen(MinecraftClient client) {
-        try {
-            Object viaMethod = ReflectionUtil.invokeNoArg(client, "getCurrentScreen", "currentScreen");
-            if (viaMethod instanceof Screen) {
-                return (Screen) viaMethod;
-            }
-            java.lang.reflect.Field field = findField(client.getClass(), "currentScreen");
-            if (field != null) {
-                field.setAccessible(true);
-                Object value = field.get(client);
-                if (value instanceof Screen) {
-                    return (Screen) value;
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
+        return client != null ? client.currentScreen : null;
     }
 
     /** Scaled window width in pixels (HUD coordinate space). */
     public static int scaledWidth(MinecraftClient client) {
         try {
-            Object w = client.getWindow();
-            Object scaled = ReflectionUtil.invokeNoArg(w, "getScaledWidth", "scaledWidth");
-            if (scaled instanceof Number) {
-                return ((Number) scaled).intValue();
-            }
-            java.lang.reflect.Field field = findField(w.getClass(), "scaledWidth");
-            if (field != null) {
-                field.setAccessible(true);
-                return field.getInt(w);
-            }
-            return client.getWindow().getWidth();
+            return client.getWindow().getScaledWidth();
         } catch (Throwable t) {
+            LOGGER.debug("scaledWidth lookup failed, defaulting to 1280: {}", t.toString());
             return 1280;
         }
     }
@@ -76,40 +62,10 @@ public final class ClientRefs {
     /** Scaled window height in pixels (HUD coordinate space). */
     public static int scaledHeight(MinecraftClient client) {
         try {
-            Object w = client.getWindow();
-            Object scaled = ReflectionUtil.invokeNoArg(w, "getScaledHeight", "scaledHeight");
-            if (scaled instanceof Number) {
-                return ((Number) scaled).intValue();
-            }
-            java.lang.reflect.Field field = findField(w.getClass(), "scaledHeight");
-            if (field != null) {
-                field.setAccessible(true);
-                return field.getInt(w);
-            }
-            return client.getWindow().getHeight();
+            return client.getWindow().getScaledHeight();
         } catch (Throwable t) {
+            LOGGER.debug("scaledHeight lookup failed, defaulting to 720: {}", t.toString());
             return 720;
         }
-    }
-
-    private static java.lang.reflect.Field findField(Class<?> type, String name) {
-        Class<?> current = type;
-        while (current != null) {
-            try {
-                return current.getDeclaredField(name);
-            } catch (NoSuchFieldException e) {
-                current = current.getSuperclass();
-            } catch (SecurityException e) {
-                return null;
-            }
-        }
-        // also scan interfaces (e.g. for record-like accessors in future versions)
-        for (Class<?> iface : type.getInterfaces()) {
-            java.lang.reflect.Field found = findField(iface, name);
-            if (found != null) {
-                return found;
-            }
-        }
-        return null;
     }
 }

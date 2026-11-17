@@ -23,6 +23,9 @@ import com.jiggneshgaming.azyron.menu.AzyronMainMenuScreen;
  */
 public final class HudEditorScreen extends Screen {
 
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger("azyronclient/hud-editor");
+
     private static final int BUTTON_DONE = 0;
     private static final int BUTTON_RESET = 1;
 
@@ -45,7 +48,10 @@ public final class HudEditorScreen extends Screen {
         // Dim the world / background (menu-style backdrop).
         ctx.fill(0, 0, this.width, this.height, 0xE60B0714);
 
-        TextRenderer tr = ClientRefs.textRenderer(MinecraftClient.getInstance());
+        // Screen's own font field — zero reflection, always available.
+        TextRenderer tr = this.textRenderer != null
+                ? this.textRenderer
+                : ClientRefs.textRenderer(MinecraftClient.getInstance());
         if (tr == null) {
             return; // nothing sensible to draw without a font
         }
@@ -59,11 +65,12 @@ public final class HudEditorScreen extends Screen {
         // Live previews of every element.
         hovered = null;
         for (String id : HudRenderer.ALL_IDS) {
-            AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(id);
-            int[] size = HudRenderer.measure(id, true);
-            HudRenderer.renderElement(ctx, id, true);
-            int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
-                    pos.x, pos.y, size[0], size[1], this.width, this.height);
+            try {
+                AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(id);
+                int[] size = HudRenderer.measure(id, true);
+                HudRenderer.renderElement(ctx, id, true);
+                int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
+                        pos.x, pos.y, size[0], size[1], this.width, this.height);
             int ex = clamped[0];
             int ey = clamped[1];
             boolean over = mouseX >= ex && mouseX < ex + size[0] && mouseY >= ey && mouseY < ey + size[1];
@@ -73,6 +80,10 @@ public final class HudEditorScreen extends Screen {
             if (over || id.equals(dragging)) {
                 RenderUtil.drawRoundedBorder(ctx, ex - 2, ey - 2, size[0] + 4, size[1] + 4, 4,
                         AzyronConstants.COLOR_ELECTRIC);
+            }
+            } catch (Throwable t) {
+                // A broken preview must not take down the whole editor.
+                LOGGER.debug("HUD preview failed for '{}': {}", id, t.toString());
             }
         }
 
