@@ -14,7 +14,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.option.LanguageOptionsScreen;
 import net.minecraft.client.gui.screen.option.OptionsScreen;
-import net.minecraft.client.language.LanguageManager;
+import net.minecraft.client.resource.language.LanguageManager;
 import net.minecraft.client.option.GameOptions;
 
 /**
@@ -101,11 +101,14 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
         }
     }
 
-    /** Vanilla Language screen — needs the client's LanguageManager (package-private field). */
+    /** Vanilla Language screen — needs the client's LanguageManager (private field). */
     private void openLanguage() {
         MinecraftClient client = MinecraftClient.getInstance();
         try {
-            Object manager = com.jiggneshgaming.azyron.util.ReflectionUtil.getField(client, "languageManager");
+            Object manager = com.jiggneshgaming.azyron.util.ReflectionUtil.invokeNoArg(client, "getLanguageManager");
+            if (manager == null) {
+                manager = com.jiggneshgaming.azyron.util.ReflectionUtil.getField(client, "languageManager");
+            }
             if (!(manager instanceof LanguageManager)) {
                 LOGGER.error("LanguageManager unavailable — cannot open the Language screen.");
                 return;
