@@ -10,9 +10,10 @@
  */
 
 plugins {
-    // Loom 1.12 is the last line supporting Gradle 8.x; it adds unpick V4,
-    // required to read the unpick metadata shipped with yarn for MC 1.21.11.
-    id 'fabric-loom' version '1.12.+'
+    // Loom 1.13 reads the unpick metadata shipped with yarn for MC 1.21.11
+    // and remaps Fabric API builds produced with Loom 1.13.3. (1.14 requires
+    // Gradle 9.2; 1.13 is the newest line working on Gradle 8.14.)
+    id 'fabric-loom' version '1.13.+'
     id 'maven-publish'
 }
 
