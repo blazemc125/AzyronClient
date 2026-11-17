@@ -81,12 +81,16 @@ public final class AzyronLoadingScreen {
             if (doneAt < 0L) {
                 doneAt = now;
             }
-            float fade = clamp01((now - doneAt) / 420.0F); // quick premium dissolve
+            // Hold an opaque black beat so the vanilla splash never flashes
+            // back through while the fade runs; once done, reset state but
+            // keep painting opaque black. The mixin only runs while the
+            // overlay exists — the moment vanilla removes it (menu takes
+            // over) the black simply stops drawing. Premium cut to menu.
+            float fade = clamp01((now - doneAt) / 420.0F);
             if (fade >= 1.0F) {
-                reset(); // next overlay re-animates from scratch
-                return;   // we stop drawing — the main menu takes over
+                reset(); // next reload re-animates from scratch
             }
-            ctx.fill(0, 0, width, height, withAlpha(0xFF000000, 1.0F - fade));
+            ctx.fill(0, 0, width, height, 0xFF000000);
             return;
         }
 
