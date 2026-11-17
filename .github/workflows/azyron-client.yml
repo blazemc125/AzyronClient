@@ -73,11 +73,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          LOG_TAIL=$(tail -n 160 /tmp/azyron-build.log 2>/dev/null \
-            | sed -e 's/\x1b\[[0-9;]*m//g' || echo 'no log captured')
-          BODY=$(printf '**AZYRON CI build failed** — step: Build the Fabric mod. Last 160 lines (ANSI stripped):\n\n```\n%s\n```' "$LOG_TAIL")
+          strip_ansi() { sed -e 's/\x1b\[[0-9;]*m//g'; }
+          # Extract javac-style diagnostics (path:line: error: ...) with context.
+          mkdir -p /tmp/azyron-diag
+          strip_ansi < /tmp/azyron-build.log > /tmp/azyron-diag/full.log || true
+          ERRORS=$(grep -E '(^|[[:space:]])[0-9]+ errors?$|: error: ' /tmp/azyron-diag/full.log | head -80 || true)
+          ERROR_BLOCK=$(grep -E -A4 ': error: ' /tmp/azyron-diag/full.log | head -400 || true)
+          FAILURE_BLOCK=$(grep -E -B2 -A12 'What went wrong|Execution failed' /tmp/azyron-diag/full.log | head -80 || true)
+          FALLBACK=$(tail -n 120 /tmp/azyron-diag/full.log)
+          BODY=$(printf '**AZYRON CI build failed** — step: Build the Fabric mod.\n\n### javac errors (file:line: error):\n```\n%s\n```\n\n### error details:\n```\n%s\n```\n\n### gradle failure summary:\n```\n%s\n```\n\n### last 120 lines:\n```\n%s\n```' "$ERRORS" "$ERROR_BLOCK" "$FAILURE_BLOCK" "$FALLBACK")
+          # GitHub comment limit ~65536; trim aggressively if needed.
+          printf '%s' "$BODY" | head -c 60000 > /tmp/azyron-diag/body.txt
           gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
-            -f body="$BODY" >/dev/null
+            -F body=@/tmp/azyron-diag/body.txt >/dev/null
           echo "Diagnostics comment posted on commit $GITHUB_SHA"
       - name: Show resolved pins
         working-directory: ${{ env.MOD_DIR }}
