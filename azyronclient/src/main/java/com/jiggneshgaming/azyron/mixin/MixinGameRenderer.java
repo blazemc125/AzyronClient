@@ -19,7 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class MixinGameRenderer {
 
     @Inject(method = "getFov", at = @At("RETURN"), cancellable = true)
-    private void azyronclient$applyZoomFov(CallbackInfoReturnable<Float> cir) {
+    private void azyronclient$applyZoomFov(Camera camera, float tickProgress, boolean changingFov,
+                                           CallbackInfoReturnable<Float> cir) {
         // Mark the mixin as operational so the FOV-slider fallback stays off.
         ZoomManager.fovMixinActive = true;
         try {

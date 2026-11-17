@@ -44,11 +44,11 @@ public final class DynamicFpsManager {
                 client.getWindow().getHandle(), org.lwjgl.glfw.GLFW.GLFW_FOCUSED) == 1;
         if (!focused && !limited) {
             try {
-                Object maxFps = client.options.getMaxFps();
-                savedMaxFps = ((Number) maxFps.getClass().getMethod("getValue").invoke(maxFps)).intValue();
+                net.minecraft.client.option.SimpleOption<Integer> maxFps = client.options.getMaxFps();
+                savedMaxFps = maxFps.getValue().intValue();
                 int cap = Math.max(1, AzyronConfig.get().unfocusedFps);
                 if (savedMaxFps > cap) {
-                    client.options.getMaxFps().setValue(Integer.valueOf(cap));
+                    maxFps.setValue(Integer.valueOf(cap));
                     limited = true;
                     LOGGER.debug("Window unfocused — capped FPS to {} (was {}).", cap, savedMaxFps);
                 }
@@ -67,6 +67,9 @@ public final class DynamicFpsManager {
         }
         try {
             MinecraftClient client = MinecraftClient.getInstance();
+            if (client == null || client.options == null) {
+                return;
+            }
             client.options.getMaxFps().setValue(Integer.valueOf(savedMaxFps));
             LOGGER.debug("Window focused — restored FPS cap to {}.", savedMaxFps);
         } catch (Throwable t) {

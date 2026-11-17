@@ -55,6 +55,10 @@ public final class ProfileManager {
     /** Apply settings without changing the persisted selection (used on world join). */
     public static void applySettings(PerformanceProfile.Settings s) {
         MinecraftClient client = MinecraftClient.getInstance();
+        if (client == null || client.options == null) {
+            LOGGER.warn("Options not available yet — profile will apply on the next tick.");
+            return;
+        }
         net.minecraft.client.option.GameOptions options = client.options;
 
         // --- direct, stable option writes (each guarded) ---
@@ -79,7 +83,13 @@ public final class ProfileManager {
         try {
             GraphicsMode[] values = GraphicsMode.values();
             GraphicsMode target = values[Math.max(0, Math.min(values.length - 1, mode))];
-            options.getPreset().setValue(target);
+            net.minecraft.client.option.SimpleOption<GraphicsMode> preset = options.getPreset();
+            if (preset == null) {
+                // Option not constructed yet (early startup) — skip, never NPE.
+                LOGGER.warn("The graphics preset option is not available yet — skipping graphics mode {}.", mode);
+                return;
+            }
+            preset.setValue(target);
         } catch (Throwable t) {
             LOGGER.warn("Could not apply graphics mode {}: {}", mode, t.toString());
         }

@@ -48,17 +48,27 @@ public abstract class BaseAzyronScreen extends Screen {
         return button;
     }
 
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("azyronclient/ui");
+    private static boolean warnedMissingFont;
+
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         MenuBackground.render(ctx, this.width, this.height, System.currentTimeMillis());
         TextRenderer tr = ClientRefs.textRenderer(MinecraftClient.getInstance());
-        if (tr != null) {
-            renderContent(ctx, tr, mouseX, mouseY, delta);
-            for (AzyronButton button : buttons) {
-                button.render(ctx, tr, mouseX, mouseY);
+        if (tr == null) {
+            // Should never happen — log once instead of failing silently, but
+            // keep the background up so the screen is never a dead black void.
+            if (!warnedMissingFont) {
+                warnedMissingFont = true;
+                LOGGER.error("TextRenderer unavailable — AZYRON menu content cannot be drawn this frame.");
             }
-            drawFooter(ctx, tr);
+            return;
         }
+        renderContent(ctx, tr, mouseX, mouseY, delta);
+        for (AzyronButton button : buttons) {
+            button.render(ctx, tr, mouseX, mouseY);
+        }
+        drawFooter(ctx, tr);
     }
 
     /** Footer chrome: version, developer credit and current profile. */
@@ -99,10 +109,26 @@ public abstract class BaseAzyronScreen extends Screen {
         return super.keyPressed(input);
     }
 
-    protected void goBack() {
+    /**
+     * Navigate back to the parent screen. Top-level screens (no parent):
+     * return to the in-game HUD when a world is loaded, otherwise to the
+     * AZYRON main menu — never to a blank/dead screen.
+     */
+    public void goBack() {
         MinecraftClient client = MinecraftClient.getInstance();
         AzyronConfig.save();
-        client.setScreen(backTarget);
+        if (backTarget != null) {
+            client.setScreen(backTarget);
+            return;
+        }
+        if (client.world != null) {
+            client.setScreen(null); // back to the in-game HUD
+            return;
+        }
+        if (!(this instanceof AzyronMainMenuScreen)) {
+            client.setScreen(new AzyronMainMenuScreen()); // safe escape — never a blank screen
+        }
+        // On the main menu itself with no world: stay where we are.
     }
 
     @Override

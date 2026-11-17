@@ -20,6 +20,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -29,19 +30,19 @@ import org.slf4j.LoggerFactory;
  * AZYRON CLIENT — Fabric client entrypoint.
  *
  * <p>Wires the HUD hook, key bindings, tick handlers, the performance
- * profile system and the title-screen replacement. All risky integrations
- * are wrapped in defensive try/catch — a failure degrades one feature,
- * never the game.</p>
+ * profile system and the title-screen replacement. Risky integrations are
+ * wrapped in defensive try/catch — a failure degrades one feature, never
+ * the game.</p>
  */
 public final class AzyronClientMod implements ClientModInitializer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("azyronclient");
 
-    /** True once the AZYRON main menu has replaced the vanilla title screen. */
-    private static boolean titleReplaced;
-
     /** World-presence tracking for disconnect cleanup. */
     private static boolean wasInWorld;
+
+    /** Set once the saved performance profile has been applied (first tick). */
+    private static boolean profileApplied;
 
     @Override
     public void onInitializeClient() {
@@ -70,16 +71,21 @@ public final class AzyronClientMod implements ClientModInitializer {
         }
 
         // 4) Tick handler — input polling, sprint, zoom, auras, dynamic FPS.
+        //    The saved performance profile is applied on the first tick:
+        //    during mod initialization the client is not ready to accept
+        //    option changes (applying graphics settings at that point can
+        //    dereference half-initialized state and throws).
         ClientTickEvents.END_CLIENT_TICK.register(AzyronClientMod::onEndTick);
 
         // 5) Replace the vanilla title screen with the AZYRON main menu.
+        //    Every TitleScreen init is replaced (quit-to-title included);
+        //    AzyronMainMenuScreen is not a TitleScreen, so no recursion.
         try {
             ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
+                if (!(screen instanceof TitleScreen)) {
+                    return;
+                }
                 try {
-                    if (titleReplaced || !(screen instanceof TitleScreen)) {
-                        return;
-                    }
-                    titleReplaced = true;
                     client.setScreen(new AzyronMainMenuScreen());
                 } catch (Throwable t) {
                     LOGGER.error("Could not open the AZYRON main menu — staying on the vanilla title.", t);
@@ -89,36 +95,45 @@ public final class AzyronClientMod implements ClientModInitializer {
             LOGGER.error("Screen replacement hook unavailable — AZYRON menus reachable via the Mods Menu key.", t);
         }
 
-        // 6) Re-apply the persisted performance profile (options survive restarts,
-        //    but a profile switch on another install must win here too).
-        try {
-            PerformanceProfile.Settings settings = PerformanceProfile.forId(ProfileManager.activeProfile());
-            ProfileManager.applySettings(settings);
-        } catch (Throwable t) {
-            LOGGER.warn("Could not apply the saved performance profile at startup: {}", t.toString());
-        }
-
         LOGGER.info("AZYRON CLIENT initialized — Right Shift opens the Mods Menu. Made by {}.",
                 AzyronConstants.DEVELOPER);
     }
 
-    private static void onEndTick(MinecraftClient client) {
-        CpsManager.poll();
-        KeystrokesTracker.poll();
-        ZoomManager.tick();
-        ToggleSprint.tick();
-        DynamicFpsManager.tick();
-        AuraManager.tick();
+    private static void applySavedProfileOnce(MinecraftClient client) {
+        if (profileApplied) {
+            return;
+        }
+        profileApplied = true; // one shot — never fight the user's settings later
+        try {
+            PerformanceProfile.Settings settings = PerformanceProfile.forId(ProfileManager.activeProfile());
+            ProfileManager.applySettings(settings);
+        } catch (Throwable t) {
+            LOGGER.warn("Could not apply the saved performance profile: {}", t.toString());
+        }
+    }
 
-        // Right Shift — toggle the Mods Menu while in-world (no screen open).
+    private static void onEndTick(MinecraftClient client) {
+        // 0) First tick — the client is fully constructed now.
+        applySavedProfileOnce(client);
+
+        tickSafely("CPS polling", CpsManager::poll);
+        tickSafely("Keystroke tracking", KeystrokesTracker::poll);
+        tickSafely("Zoom", ZoomManager::tick);
+        tickSafely("Toggle sprint", ToggleSprint::tick);
+        tickSafely("Dynamic FPS", DynamicFpsManager::tick);
+        tickSafely("Cosmetic auras", AuraManager::tick);
+
+        // Right Shift — toggle the Mods Menu (open in-world, close when open).
         if (KeyBinds.menuWasPressed()) {
             try {
-                net.minecraft.client.gui.screen.Screen current = com.jiggneshgaming.azyron.util.ClientRefs.currentScreen(client);
+                Screen current = currentScreen(client);
                 if (current == null) {
                     client.setScreen(new AzyronModsMenuScreen(null));
+                } else if (current instanceof AzyronModsMenuScreen) {
+                    ((AzyronModsMenuScreen) current).goBack();
                 }
             } catch (Throwable t) {
-                LOGGER.warn("Could not open the Mods Menu: {}", t.toString());
+                LOGGER.warn("Could not toggle the Mods Menu: {}", t.toString());
             }
         }
 
@@ -139,12 +154,17 @@ public final class AzyronClientMod implements ClientModInitializer {
             }
         }
 
-        // H — HUD editor.
+        // H — HUD editor. Toggles: opens over the HUD, closes the editor when open.
         if (KeyBinds.hudEditorWasPressed()) {
             try {
-                client.setScreen(new HudEditorScreen());
+                Screen current = currentScreen(client);
+                if (current == null) {
+                    client.setScreen(new HudEditorScreen());
+                } else if (current instanceof HudEditorScreen) {
+                    closeToSafeScreen(client, current);
+                }
             } catch (Throwable t) {
-                LOGGER.warn("Could not open the HUD editor: {}", t.toString());
+                LOGGER.warn("Could not toggle the HUD editor: {}", t.toString());
             }
         }
 
@@ -156,5 +176,26 @@ public final class AzyronClientMod implements ClientModInitializer {
             AuraManager.reset();
         }
         wasInWorld = inWorld;
+    }
+
+    private static Screen currentScreen(MinecraftClient client) {
+        return com.jiggneshgaming.azyron.util.ClientRefs.currentScreen(client);
+    }
+
+    /** Close a screen that carries no navigation target — return to the HUD or the AZYRON main menu. */
+    private static void closeToSafeScreen(MinecraftClient client, Screen current) {
+        if (client.world != null) {
+            client.setScreen(null);
+        } else if (!(current instanceof AzyronMainMenuScreen)) {
+            client.setScreen(new AzyronMainMenuScreen());
+        }
+    }
+
+    private static void tickSafely(String feature, Runnable tick) {
+        try {
+            tick.run();
+        } catch (Throwable t) {
+            LOGGER.warn("AZYRON feature '{}' failed this tick: {}", feature, t.toString());
+        }
     }
 }

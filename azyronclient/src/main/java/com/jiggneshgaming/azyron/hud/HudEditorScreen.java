@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import net.minecraft.client.gui.Click;
 import net.minecraft.client.input.KeyInput;
+import com.jiggneshgaming.azyron.menu.AzyronMainMenuScreen;
 
 /**
  * AZYRON CLIENT — HUD editor.
@@ -112,7 +113,7 @@ public final class HudEditorScreen extends Screen {
                 return true;
             }
             if (mouseX >= doneX && mouseX < doneX + btnW) {
-                this.close();
+                closeToSafeScreen();
                 return true;
             }
         }
@@ -167,7 +168,7 @@ public final class HudEditorScreen extends Screen {
     public boolean keyPressed(KeyInput input) {
         int keyCode = input.key();
         if (keyCode == 256) { // GLFW_KEY_ESCAPE
-            this.close();
+            closeToSafeScreen();
             return true;
         }
         return super.keyPressed(input);
@@ -176,6 +177,17 @@ public final class HudEditorScreen extends Screen {
     @Override
     public boolean shouldCloseOnEsc() {
         return true;
+    }
+
+    /** Close the editor — back to the in-game HUD when in a world, otherwise to the AZYRON main menu. */
+    private void closeToSafeScreen() {
+        MinecraftClient client = MinecraftClient.getInstance();
+        AzyronConfig.save();
+        if (client.world != null) {
+            client.setScreen(null);
+        } else {
+            client.setScreen(new AzyronMainMenuScreen());
+        }
     }
 
     @Override

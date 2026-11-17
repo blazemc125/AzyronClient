@@ -246,8 +246,8 @@ public final class HudRenderer {
         // Row 2 — LMB / RMB
         cy += KEY_SIZE + KEY_GAP;
         int barWidth = (width - 8 - KEY_GAP) / 2;
-        boolean leftDown = demo || CpsManager.isLeftDown();
-        boolean rightDown = demo ? false : false;
+                boolean leftDown = demo || CpsManager.isLeftDown();
+                boolean rightDown = !demo && CpsManager.isRightDown();
         drawMouseKey(ctx, tr, cx, cy, barWidth, 14, "LMB", leftDown);
         drawMouseKey(ctx, tr, cx + barWidth + KEY_GAP, cy, barWidth, 14, "RMB", rightDown);
         // Row 3 — SPACE

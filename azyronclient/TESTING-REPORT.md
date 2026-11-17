@@ -92,7 +92,79 @@ Outbound traffic from this environment is limited to `github.com`,
 Mojang's CDN and Modrinth are unreachable, so Loom cannot download Minecraft.
 The CI workflow compensates by building on GitHub-hosted runners.
 
-## 5. Known issues
+## 5. Bugfix pass — 2026-11-17 (complete bug-fix request)
+
+Eleven reported issues were investigated against the yarn-1.21.11+build.1 API
+docs and the full source. Verification is compile-level (CI) plus code
+inspection — **no in-game runtime testing was possible in this environment**.
+
+**Root causes found and fixed:**
+
+1. **Mods Menu disappears / can't be reopened** — the title-screen hook used a
+   one-shot `titleReplaced` latch (after any quit-to-title the AZYRON menu was
+   never shown again), the Right Shift handler only *opened* the menu and
+   never closed it, and the `currentScreen` reflection gate made the open path
+   fragile. Fixed: TitleScreen is replaced every time (quit-to-title
+   included, no recursion since the AZYRON menu is not a TitleScreen),
+   Right Shift now *toggles* the Mods Menu, and every per-feature tick is
+   wrapped so one failing feature can't kill the tick loop.
+2. **Back navigation dead-ends** — `goBack()` sent `setScreen(null)` for
+   top-level screens even outside a world (blank/dead screen), and ESC on the
+   AZYRON main menu did the same. Now: parent screen if any, else in-game HUD
+   when a world is loaded, else the AZYRON main menu — never a blank screen.
+   Vanilla singleplayer/multiplayer screens are constructed directly instead
+   of reflectively (reflection failures made the buttons appear dead).
+3. **Missing/invisible GUI screens** — screens built their entire content
+   behind a silent `textRenderer == null` early-return, and navigation to
+   vanilla screens failed silently. Fixed: one-time error log with background
+   still drawn, vanilla screens constructed directly, and the screen-replace
+   latch removed.
+4. **KeyBinding registration errors** — registration went through reflection
+   against a `(String, Type, int, String)` constructor that **does not exist**
+   in 1.21.11 (removed in 1.21.9), so every AZYRON keybinding silently failed
+   and the features were dead. Rewritten to the real yarn API:
+   `KeyBinding.Category.create(Identifier)` +
+   `new KeyBinding(String, Type, int, Category)` — compile-verified. The
+   controls screen category translation key `key.category.azyronclient.main`
+   was added to `en_us.json`.
+5. **No dedicated touch button for the Mods Menu** — added an `AZYRON` button
+   to the default Pojav control layout (`app_pojavlauncher/.../default.json`),
+   publishing GLFW Right Shift (344), the same key the Mods Menu keybind uses.
+   Fresh installs get it on first launch; existing layouts keep their own
+   buttons (Pojav only copies the default once).
+6. **Zoom / Sprint Toggle / HUD Editor broken** — all three were dead because
+   of (4); additionally the HUD keystrokes panel never showed RMB state
+   (`demo ? false : false`). Both fixed. Zoom keeps the FOV-mixin path and the
+   FOV-slider fallback; the mixin handler now declares the exact yarn
+   signature `getFov(Camera, float, boolean)`.
+7. **Graphics settings NullPointerException** — the saved profile (incl. the
+   graphics preset) was applied inside `onInitializeClient`, while the client
+   is not ready to accept option changes (the graphics preset applies a
+   resource reload; vanilla dereferences half-initialized state →
+   NullPointerException). Now applied on the first client tick; the preset
+   option is null-checked; profiles still apply on demand from the menu.
+8. **Invalid fullscreen configuration** — Pojav wrote `fullscreen:off` into
+   `options.txt` (Minecraft expects `true`/`false`). Fixed to `false`
+   (`GameView.realStart()`); `GameOptionsUtils` already normalized legacy
+   values.
+9. **GUI rendering & initialization** — see (1)(3); the AZYRON main menu is
+   re-installed on every vanilla title screen init, and screens can no longer
+   silently swallow renderer lookup failures.
+10. **FPS / memory** — menu background band colors are cached per window
+    height (no per-frame `lerpColor`), orb glow rings 7→5, circle fills step
+    2px rows, vignette 48→12 bands; DynamicFPS uses direct
+    `SimpleOption<Integer>` get/set instead of reflective `getValue`;
+    DynamicFPS null-guards restored paths.
+11. **General** — RMB keystroke highlight fixed; sprint-toggle RMB display
+    corrected; tick handlers isolated via `tickSafely`; HUD editor and any
+    stray ESC paths route to the same safe-close logic; category language key
+    aligned with the 1.21.11 `key.category.<namespace>.<path>` convention.
+
+**Still unverified:** everything that requires an actual game session
+(click-through, mixin application at runtime, rendering on device). Verify on
+a desktop Fabric 1.21.11 instance and on PojavLauncher before publishing.
+
+## 6. Known issues
 
 * **Zoom fallback FOV**: if the FOV mixin fails to apply, zoom temporarily
   sets the vanilla FOV slider to its minimum while held — noticeable if you
@@ -100,15 +172,15 @@ The CI workflow compensates by building on GitHub-hosted runners.
 * **Dynamic FPS detection**: uses window focus state; AZERTY/mobile keyboards
   are unaffected, but on some Wayland compositors focus events lag by a second.
 * **HUD zoom indicator** only shows while zoomed — by design.
-* **Keystrokes LMB/RMB highlight** shows LMB only (RMB state tracked internally,
-  display pending).
+* **Keystrokes LMB/RMB highlight** — both buttons now track live state
+  (fixed 2026-11-17).
 * **Reset EVERYTHING** button label refreshes on render; during the 3.5 s
   armed window the button reads "Click again!".
 * **Cosmetic auras are client-side only** — other players can't see them yet.
 * **PojavLauncher touch devices**: screens are built for keyboards; external
   keyboard strongly recommended for the Mods Menu.
 
-## 6. Release checklist before calling 1.0 done
+## 7. Release checklist before calling 1.0 done
 
 - [ ] CI green on `main` (core tests + Loom build + pack)
 - [ ] Manual smoke test on desktop Fabric 1.21.11 (splash → menu → world → HUD → settings)

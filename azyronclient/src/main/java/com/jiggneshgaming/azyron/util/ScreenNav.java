@@ -2,16 +2,17 @@ package com.jiggneshgaming.azyron.util;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen;
+import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
- * AZYRON CLIENT — resilient screen navigation.
+ * AZYRON CLIENT — screen navigation helpers.
  *
- * <p>Vanilla menu screen constructor signatures shift between Minecraft
- * versions. This helper tries a list of candidate constructors reflectively
- * and logs a clear warning when none match, instead of crashing the game.</p>
+ * <p>Constructs the vanilla screens directly against the yarn-mapped API
+ * (verified for 1.21.11). A failure is logged with a clear message instead
+ * of silently doing nothing when the user presses a menu button.</p>
  */
 public final class ScreenNav {
 
@@ -21,54 +22,18 @@ public final class ScreenNav {
     }
 
     public static void openSingleplayer(MinecraftClient client, Screen parent) {
-        Screen screen = tryCreate("net.minecraft.client.gui.screen.world.SelectWorldScreen", parent);
-        if (screen != null) {
-            client.setScreen(screen);
-        } else {
-            LOGGER.warn("Could not open the singleplayer screen — vanilla screen class not found.");
+        try {
+            client.setScreen(new SelectWorldScreen(parent));
+        } catch (Throwable t) {
+            LOGGER.error("Could not open the singleplayer screen", t);
         }
     }
 
     public static void openMultiplayer(MinecraftClient client, Screen parent) {
-        Screen screen = tryCreate("net.minecraft.client.gui.screen.multiplayer.MultiplayerScreen", parent);
-        if (screen != null) {
-            client.setScreen(screen);
-        } else {
-            LOGGER.warn("Could not open the multiplayer screen — vanilla screen class not found.");
-        }
-    }
-
-    private static final Class<?>[][] CTOR_SHAPES = {
-            {Screen.class},   // new SelectWorldScreen(parentScreen)
-            {}                // new SelectWorldScreen() — older shapes
-    };
-
-    private static Screen tryCreate(String className, Screen parent) {
         try {
-            Class<?> raw = Class.forName(className);
-            for (Class<?>[] shape : CTOR_SHAPES) {
-                try {
-                    java.lang.reflect.Constructor<?> ctor = raw.getDeclaredConstructor(shape);
-                    ctor.setAccessible(true);
-                    Object[] args = shape.length == 1 ? new Object[]{parent} : new Object[0];
-                    Object created = ctor.newInstance(args);
-                    if (created instanceof Screen) {
-                        return (Screen) created;
-                    }
-                } catch (NoSuchMethodException | SecurityException e) {
-                    // try the next constructor shape
-                } catch (Throwable t) {
-                    LOGGER.warn("Failed to instantiate {} ({} arg ctor): {}",
-                            className, shape.length, t.toString());
-                    return null;
-                }
-            }
-            LOGGER.warn("No compatible constructor found for {} (tried {} and no-arg).",
-                    className, "screen-parent");
-            return null;
-        } catch (ClassNotFoundException e) {
-            LOGGER.warn("Vanilla screen class {} is unavailable on this Minecraft version.", className);
-            return null;
+            client.setScreen(new MultiplayerScreen(parent));
+        } catch (Throwable t) {
+            LOGGER.error("Could not open the multiplayer screen", t);
         }
     }
 }
