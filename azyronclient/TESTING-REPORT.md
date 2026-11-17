@@ -277,6 +277,34 @@ access-widener descriptor strings are validated by Loom **at build time** —
 if any of the three field descriptors were wrong, the CI build would fail.
 A successful device session is still required before publishing.
 
+## 5d. Premium loading screen (2026-11-17)
+
+Custom black & white loading experience replaces the visuals of the
+startup/reload splash (`SplashOverlay`, injected at TAIL of its render —
+vanilla keeps owning progress, fades and removal; we only paint over it).
+
+* AS monogram: rotating comet arc, pulsing hairline rings, glowing "AS",
+  orbiting spark — all procedural (no textures, resolution-independent).
+* "WELCOME TO AZYRON CLIENT" with letter-spaced premium type + micro tagline.
+* Progress bar shows ONLY the vanilla reload's own `getProgress()` —
+  monotonic-clamped and smoothed for display. Never invented, never time-based;
+  bar reaches 100% exactly when the game finishes loading.
+* Status line derives from real progress: Initializing Minecraft → Loading
+  Fabric → Loading Mods → Initializing Renderer → Preparing Main Menu
+  (trailing dots are cosmetic).
+* Loading phases never block, re-order or skip any game work; the overlay
+  draws after vanilla each frame and fades through black into the main
+  menu automatically when the reload completes.
+* mixin failure degrades to the vanilla splash (required=false), never a crash.
+* Progress semantics note: the status labels are phase indicators derived
+  from the single reload fraction — the individual sub-steps are not exposed
+  by the game, so phases are labeled by threshold, the percentage itself is
+  always the real value.
+
+**Verification scope (honest):** CI compile + inspection only — no game
+session was run here. On-device check: cold launch → loading screen →
+percentage advances with real loading → main menu appears automatically.
+
 ## 6. Known issues
 
 * **Zoom fallback FOV**: if the FOV mixin fails to apply, zoom temporarily
