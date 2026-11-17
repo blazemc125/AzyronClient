@@ -105,16 +105,13 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
     private void openLanguage() {
         MinecraftClient client = MinecraftClient.getInstance();
         try {
-            Object manager = com.jiggneshgaming.azyron.util.ReflectionUtil.invokeNoArg(client, "getLanguageManager");
+            LanguageManager manager = client.languageManager; // open via the access widener
             if (manager == null) {
-                manager = com.jiggneshgaming.azyron.util.ReflectionUtil.getField(client, "languageManager");
-            }
-            if (!(manager instanceof LanguageManager)) {
                 LOGGER.error("LanguageManager unavailable — cannot open the Language screen.");
                 return;
             }
             GameOptions options = client.options;
-            client.setScreen(new LanguageOptionsScreen(this, options, (LanguageManager) manager));
+            client.setScreen(new LanguageOptionsScreen(this, options, manager));
         } catch (Throwable t) {
             LOGGER.error("Could not open the Language screen", t);
         }

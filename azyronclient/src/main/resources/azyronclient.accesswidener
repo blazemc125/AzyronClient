@@ -1,0 +1,11 @@
+accessWidener v2 named
+
+# AZYRON CLIENT — read-only access to three private members that must be
+# resolved at compile time. (Literal-name reflection silently returns nothing
+# in production Fabric builds, because runtime names are intermediary — this
+# was the root cause of the "TextRenderer cannot be resolved" failure at
+# world entry.)
+
+accessible field net/minecraft/client/MinecraftClient textRenderer Lnet/minecraft/client/font/TextRenderer;
+accessible field net/minecraft/client/MinecraftClient session Lnet/minecraft/client/session/Session;
+accessible field net/minecraft/client/MinecraftClient languageManager Lnet/minecraft/client/resource/language/LanguageManager;

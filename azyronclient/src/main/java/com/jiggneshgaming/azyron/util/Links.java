@@ -10,8 +10,8 @@ import java.net.URI;
  * AZYRON CLIENT — open external links (Discord invite, etc.).
  *
  * <p>Util.getOperatingSystem().open(URI) is the vanilla, cross-platform
- * path used by the game itself; a desktop fallback covers stripped
- * Android environments where Util is unavailable.</p>
+ * path used by the game itself; a desktop fallback covers environments
+ * where Util is unavailable.</p>
  */
 public final class Links {
 

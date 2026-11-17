@@ -3,7 +3,7 @@
   "id": "azyronclient",
   "version": "${version}",
   "name": "AZYRON CLIENT",
-  "description": "AZYRON CLIENT — Performance. Smoothness. Style. A premium FPS-optimization client with HUD, profiles, custom menus and cosmetics for Minecraft 1.21.11.",
+  "description": "AZYRON CLIENT \u2014 Performance. Smoothness. Style. A premium FPS-optimization client with HUD, profiles, custom menus and cosmetics for Minecraft 1.21.11.",
   "authors": [
     "JIGNESH GAMING"
   ],
@@ -35,9 +35,10 @@
     "ferrite-core": "Optional but recommended for memory reduction.",
     "entityculling": "Optional but recommended to cull hidden entities.",
     "moreculling": "Optional but recommended for additional culling.",
-    "dynamic-fps": "Optional — AZYRON CLIENT ships its own unfocused-FPS limiter (Dynamic FPS module)."
+    "dynamic-fps": "Optional \u2014 AZYRON CLIENT ships its own unfocused-FPS limiter (Dynamic FPS module)."
   },
   "custom": {
     "modmenu:client_side_only": true
-  }
+  },
+  "accessWidener": "azyronclient.accesswidener"
 }

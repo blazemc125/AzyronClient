@@ -7,41 +7,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * AZYRON CLIENT — typed accessors for Minecraft internals whose yarn
- * names drift between versions.
+ * AZYRON CLIENT — typed accessors for Minecraft internals.
  *
- * <p>Direct typed access is used wherever the field/method visibility and
- * name are stable (currentScreen, window scaled size). TextRenderer and
- * Session access stay reflection-based because those members are
- * package-private (textRenderer) / private (session) in 1.21.11; the helper
- * degrades gracefully instead of crashing the HUD.</p>
+ * <p>Every accessor is a direct, compile-time call. Private members are made
+ * visible to the mod by the {@code azyronclient.accesswidener} (remapped by
+ * Loom for production) — literal-name reflection is never used, because at
+ * runtime the field names are intermediary and reflection silently returns
+ * nothing (the root cause of the "TextRenderer cannot be resolved" failure).</p>
  */
 public final class ClientRefs {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("azyronclient/refs");
-    private static boolean warnedTextRenderer;
 
     private ClientRefs() {
     }
 
-    /** TextRenderer regardless of yarn naming (getTextRenderer() vs textRenderer field). */
+    /** The client's text renderer — always available after client startup. */
     public static TextRenderer textRenderer(MinecraftClient client) {
-        if (client == null) {
+        try {
+            return client != null ? client.textRenderer : null;
+        } catch (Throwable t) {
+            LOGGER.warn("TextRenderer unavailable this session: {}", t.toString());
             return null;
         }
-        Object viaMethod = ReflectionUtil.invokeNoArg(client, "getTextRenderer");
-        if (viaMethod instanceof TextRenderer) {
-            return (TextRenderer) viaMethod;
-        }
-        Object viaField = ReflectionUtil.getField(client, "textRenderer");
-        if (viaField instanceof TextRenderer) {
-            return (TextRenderer) viaField;
-        }
-        if (!warnedTextRenderer) {
-            warnedTextRenderer = true;
-            LOGGER.warn("Could not resolve the TextRenderer — text-based HUD elements will be skipped.");
-        }
-        return null;
     }
 
     /** Current screen or null (public field on MinecraftClient). */

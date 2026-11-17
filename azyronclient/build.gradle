@@ -35,6 +35,8 @@ loom {
     mixin {
         defaultRefmapName = 'azyronclient.refmap.json'
     }
+    // Read-only access to three private members resolved at compile time.
+    accessWidenerPath = file('src/main/resources/azyronclient.accesswidener')
 }
 
 dependencies {

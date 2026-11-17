@@ -220,6 +220,63 @@ and the core self-tests pass; a real PojavLauncher/desktop session is
 required before publishing. If anything still fails, the new error badge
 will name the failing layer instead of showing a blank screen.
 
+## 5c. World-entry crash — root-cause pass (2026-11-17, after e090cac)
+
+**Reported from the on-device log:** "TextRenderer cannot be resolved"
+appears repeatedly; Chunk Sections UBO repeatedly resizes; the integrated
+server falls 56 ticks behind; the player joins the Singleplayer world; then
+the launcher log ends with an unexpected EOF (no Java crash report).
+
+**Root cause (confirmed in code, not a guess):**
+All Minecraft-member access in the mod went through *literal-name reflection*
+(`getDeclaredField("textRenderer")`, `"session"`, `"languageManager"`, ...).
+Fabric ships intermediary names at runtime — `field_1772`, not
+`textRenderer` — so in **every production build** those lookups throw
+`NoSuchFieldException`/`NoSuchMethodException` and silently return null.
+This is why the menus shipped without text/buttons (fixed in 607e935 by
+direct field access on Screen) and why the HUD then logged "TextRenderer
+cannot be resolved" at world entry. Worse, that lookup happened
+**per element per frame** (9 lookups/frame for the HUD, each allocating an
+exception and scanning the class), pure GC churn exactly when the device is
+already saturated at world load.
+
+**Fix (production-safe by construction):**
+* New `azyronclient.accesswidener` opens exactly three private members:
+  `MinecraftClient.textRenderer`, `MinecraftClient.session`,
+  `MinecraftClient.languageManager` (read-only). Loom remaps it for
+  production; no runtime name is ever guessed.
+* `ClientRefs` is direct compile-time access only — zero reflection.
+* `Sessions` reads `session.getUuidOrNull()` directly and **caches** the
+  UUID (the ping element no longer parses anything per frame).
+* `Links` uses `Util.getOperatingSystem().open(URI)` directly.
+* Language screen gets `client.languageManager` directly (typed).
+* ReflectionUtil deleted — the class no longer exists in the mod.
+* HudEditorScreen and BaseAzyronScreen already use the direct
+  `this.textRenderer` field (607e935).
+
+**What this does NOT fix (device/pack-side, honest):**
+"Chunk Sections UBO repeatedly resizes" + "server falls 56 ticks behind" is
+the modpack (Sodium is bundled as *required*) streaming chunks into the
+GPU-bottlenecked device at join with the BALANCED profile (Fancy graphics,
+view distance 12, clouds on). The AZYRON mod contains **zero** chunk-rendering,
+UBO, pipeline or world-renderer code, and no native/GL calls at all — every
+draw goes through `DrawContext`. The EOF (process death with no Java crash)
+is consistent with the OS killing the app under memory pressure or a native
+GL failure in the pack's render stack, not a Java exception in this mod.
+Device-side mitigations, in order: (1) switch the AZYRON profile chip to
+POTATO (Fast graphics, view 6, minimal particles, clouds off) before joining;
+(2) close background apps; (3) if it still dies at join, remove Sodium from
+the instance (or install the JAR-only build) and compare — if the crash
+disappears it was the pack's renderer on that GPU. No launcher crash report
+was produced, so no further automatic diagnosis is possible from the log
+alone.
+
+**Verification scope (unchanged honesty):** CI compile + core self-tests +
+code inspection only. No game session was run in this environment. The
+access-widener descriptor strings are validated by Loom **at build time** —
+if any of the three field descriptors were wrong, the CI build would fail.
+A successful device session is still required before publishing.
+
 ## 6. Known issues
 
 * **Zoom fallback FOV**: if the FOV mixin fails to apply, zoom temporarily
