@@ -1,0 +1,9 @@
+# AZYRON CLIENT — build outputs (never commit)
+build/
+dist/
+.gradle/
+out/
+run/
+logs/
+*.mrpack
+!gradle/wrapper/gradle-wrapper.jar

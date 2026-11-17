@@ -1,0 +1,249 @@
+package com.jiggneshgaming.azyron.menu;
+
+import com.jiggneshgaming.azyron.AzyronConstants;
+import com.jiggneshgaming.azyron.config.AzyronConfig;
+import com.jiggneshgaming.azyron.util.ClientRefs;
+import com.jiggneshgaming.azyron.util.RenderUtil;
+import com.jiggneshgaming.azyron.util.Texts;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.screen.Screen;
+
+/**
+ * AZYRON CLIENT — cosmetics.
+ *
+ * <p>Client-side particle auras rendered around your player. Fully
+ * functional offline; visible only to you (server sync is a future
+ * feature). Selecting a card equips it instantly.</p>
+ */
+public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
+
+    private static final class Cosmetic {
+        final String id;
+        final String name;
+        final String description;
+
+        Cosmetic(String id, String name, String description) {
+            this.id = id;
+            this.name = name;
+            this.description = description;
+        }
+    }
+
+    private static final Cosmetic[] COSMETICS = {
+            new Cosmetic("NONE", "None", "No aura — clean look."),
+            new Cosmetic("END_SPARKLE", "End Sparkle", "Violet-white ender motes orbit you."),
+            new Cosmetic("SOUL_FLAME", "Soul Flame", "Teal soul fire swirls around you."),
+            new Cosmetic("EMBER", "Ember Trail", "Warm floating embers on the move."),
+            new Cosmetic("SNOWFLAKE", "Snowflake", "Soft frosty flakes drifting by.")
+    };
+
+    public AzyronCosmeticsScreen(Screen backTarget) {
+        super("AZYRON Cosmetics", backTarget);
+    }
+
+    @Override
+    protected void buildButtons() {
+        int x = Math.max(24, (int) (this.width * 0.06D));
+        addButton("Back", x, this.height - 40, 120, 22, this::goBack);
+    }
+
+    @Override
+    protected void renderContent(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY, float delta) {
+        Texts.draw(ctx, tr, "AZYRON COSMETICS", Math.max(24, (int) (this.width * 0.06D)), 16,
+                AzyronConstants.COLOR_TEXT, true);
+        Texts.draw(ctx, tr, "Particle auras — apply instantly, visible to you",
+                Math.max(24, (int) (this.width * 0.06D)), 28, AzyronConstants.COLOR_TEXT_DIM, false);
+
+        int cardW = 132;
+        int cardH = 122;
+        int gap = 12;
+        int cols = Math.max(1, Math.min(5, (this.width - 48) / (cardW + gap)));
+        int startX = Math.max(24, (int) (this.width * 0.06D));
+        int startY = 54;
+
+        String equipped = AzyronConfig.get().aura;
+        for (int i = 0; i < COSMETICS.length; i++) {
+            Cosmetic cosmetic = COSMETICS[i];
+            int col = i % cols;
+            int row = i / cols;
+            int x = startX + col * (cardW + gap);
+            int y = startY + row * (cardH + gap);
+            boolean selected = cosmetic.id.equals(equipped);
+            boolean hover = mouseX >= x && mouseX < x + cardW && mouseY >= y && mouseY < y + cardH;
+            renderCard(ctx, tr, cosmetic, x, y, cardW, cardH, selected, hover);
+        }
+    }
+
+    private void renderCard(DrawContext ctx, TextRenderer tr, Cosmetic cosmetic,
+                            int x, int y, int w, int h, boolean selected, boolean hover) {
+        int fill = selected ? 0xE0281E45 : (hover ? 0xD0241838 : 0xB0181028);
+        int border = selected ? AzyronConstants.COLOR_ELECTRIC
+                : (hover ? AzyronConstants.COLOR_PURPLE_BRIGHT : AzyronConstants.COLOR_PANEL_BORDER);
+        RenderUtil.fillRoundedRect(ctx, x, y, w, h, 8, fill);
+        RenderUtil.drawRoundedBorder(ctx, x, y, w, h, 8, border);
+        if (selected) {
+            RenderUtil.fillGlow(ctx, x, y, w, h, 8, AzyronConstants.COLOR_ELECTRIC);
+        }
+
+        // Icon area
+        int iconCy = y + 40;
+        int iconCx = x + w / 2;
+        drawAuraIcon(ctx, cosmetic.id, iconCx, iconCy);
+
+        // Name + description
+        Texts.drawCentered(ctx, tr, cosmetic.name, iconCx, y + 68,
+                selected ? AzyronConstants.COLOR_ELECTRIC : AzyronConstants.COLOR_TEXT, true);
+        wrapCentered(ctx, tr, cosmetic.description, iconCx, y + 80, w - 12, 9,
+                AzyronConstants.COLOR_TEXT_DIM, 2);
+
+        // Equipped badge
+        if (selected) {
+            String badge = "EQUIPPED";
+            int bw = tr.getWidth(badge) + 10;
+            RenderUtil.fillRoundedRect(ctx, x + w / 2 - bw / 2, y - 5, bw, 11, 4, AzyronConstants.COLOR_ELECTRIC);
+            Texts.drawCentered(ctx, tr, badge, x + w / 2, y - 3, 0xFF0B0714, false);
+        }
+    }
+
+    private void drawAuraIcon(DrawContext ctx, String id, int cx, int cy) {
+        switch (id) {
+            case "END_SPARKLE":
+                drawSparkle(ctx, cx, cy, 9, AzyronConstants.COLOR_ELECTRIC);
+                drawSparkle(ctx, cx - 12, cy + 8, 5, 0xFFA78BFA);
+                drawSparkle(ctx, cx + 12, cy + 6, 4, 0xFFA78BFA);
+                break;
+            case "SOUL_FLAME":
+                drawFlame(ctx, cx, cy, 0xFF2DD4BF);
+                break;
+            case "EMBER":
+                drawFlame(ctx, cx, cy, 0xFFFB923C);
+                break;
+            case "SNOWFLAKE":
+                drawSnowflake(ctx, cx, cy, 9, 0xFFE0F2FE);
+                break;
+            default:
+                drawNone(ctx, cx, cy, 0xFF475569);
+                break;
+        }
+    }
+
+    private static void drawSparkle(DrawContext ctx, int cx, int cy, int radius, int color) {
+        // Four-pointed star — vertical and horizontal bars tapering to tips.
+        ctx.fill(cx - 1, cy - radius, cx + 2, cy + radius + 1, color);
+        ctx.fill(cx - radius, cy - 1, cx + radius + 1, cy + 2, color);
+        int inner = Math.max(1, radius / 2);
+        ctx.fill(cx - inner, cy - inner, cx + inner + 1, cy + inner + 1, color);
+        ctx.fill(cx, cy - radius - 1, cx + 1, cy + radius + 2, 0xFFFFFFFF);
+    }
+
+    private static void drawFlame(DrawContext ctx, int cx, int cy, int color) {
+        fillCircle(ctx, cx, cy + 4, 7, color);
+        fillCircle(ctx, cx, cy - 2, 5, color);
+        fillCircle(ctx, cx, cy - 7, 3, 0xFFFFFFFF);
+        fillCircle(ctx, cx, cy + 5, 4, 0xFF0B0714); // hollow core
+    }
+
+    private static void drawSnowflake(DrawContext ctx, int cx, int cy, int radius, int color) {
+        drawThickLine(ctx, cx - radius, cy, cx + radius, cy, color);
+        drawThickLine(ctx, cx - radius + 2, cy - radius + 2, cx + radius - 2, cy + radius - 2, color);
+        drawThickLine(ctx, cx - radius + 2, cy + radius - 2, cx + radius - 2, cy - radius + 2, color);
+        ctx.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFFFFFFF);
+    }
+
+    private static void drawNone(DrawContext ctx, int cx, int cy, int color) {
+        int r = 9;
+        for (int dy = -r; dy <= r; dy++) {
+            double dyC = dy - 0.5D;
+            double span = Math.sqrt(Math.max(0.0D, r * (double) r - dyC * dyC));
+            int half = (int) Math.floor(span);
+            ctx.fill(cx - half, cy + dy, cx - half + 1, cy + dy + 1, color);
+            ctx.fill(cx + half - 1, cy + dy, cx + half, cy + dy + 1, color);
+        }
+        drawThickLine(ctx, cx - 7, cy + 7, cx + 7, cy - 7, color);
+    }
+
+    private static void fillCircle(DrawContext ctx, int cx, int cy, int radius, int color) {
+        for (int dy = -radius; dy <= radius; dy++) {
+            double dyC = dy - 0.5D;
+            int half = (int) Math.floor(Math.sqrt(Math.max(0.0D, radius * (double) radius - dyC * dyC)));
+            ctx.fill(cx - half, cy + dy, cx + half + 1, cy + dy + 1, color);
+        }
+    }
+
+    private static void drawThickLine(DrawContext ctx, int x1, int y1, int x2, int y2, int color) {
+        int dx = Math.abs(x2 - x1);
+        int dy = Math.abs(y2 - y1);
+        int sx = x1 < x2 ? 1 : -1;
+        int sy = y1 < y2 ? 1 : -1;
+        int err = dx - dy;
+        int x = x1;
+        int y = y1;
+        while (true) {
+            ctx.fill(x, y, x + 2, y + 2, color);
+            if (x == x2 && y == y2) {
+                break;
+            }
+            int e2 = 2 * err;
+            if (e2 > -dy) {
+                err -= dy;
+                x += sx;
+            }
+            if (e2 < dx) {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    /** Word-wrap centered text within maxWidth. */
+    private static void wrapCentered(DrawContext ctx, TextRenderer tr, String text, int centerX, int y,
+                                     int maxWidth, int lineHeight, int color, int maxLines) {
+        String[] words = text.split(" ");
+        StringBuilder line = new StringBuilder();
+        int lineIndex = 0;
+        for (String word : words) {
+            String candidate = line.length() == 0 ? word : line + " " + word;
+            if (tr.getWidth(candidate) > maxWidth && line.length() > 0) {
+                Texts.drawCentered(ctx, tr, line.toString(), centerX, y + lineIndex * lineHeight, color, false);
+                lineIndex++;
+                if (lineIndex >= maxLines) {
+                    return;
+                }
+                line = new StringBuilder(word);
+            } else {
+                line = new StringBuilder(candidate);
+            }
+        }
+        if (line.length() > 0 && lineIndex < maxLines) {
+            Texts.drawCentered(ctx, tr, line.toString(), centerX, y + lineIndex * lineHeight, color, false);
+        }
+    }
+
+    /* --------------------------- events ---------------------------- */
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0) {
+            int cardW = 132;
+            int cardH = 122;
+            int gap = 12;
+            int cols = Math.max(1, Math.min(5, (this.width - 48) / (cardW + gap)));
+            int startX = Math.max(24, (int) (this.width * 0.06D));
+            int startY = 54;
+            for (int i = 0; i < COSMETICS.length; i++) {
+                int col = i % cols;
+                int row = i / cols;
+                int x = startX + col * (cardW + gap);
+                int y = startY + row * (cardH + gap);
+                if (mouseX >= x && mouseX < x + cardW && mouseY >= y && mouseY < y + cardH) {
+                    AzyronConfig.get().aura = COSMETICS[i].id;
+                    AzyronConfig.save();
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+}

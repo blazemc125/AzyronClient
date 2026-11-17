@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "azyronclient",
+  "version": "${version}",
+  "name": "AZYRON CLIENT",
+  "description": "AZYRON CLIENT — Performance. Smoothness. Style. A premium FPS-optimization client with HUD, profiles, custom menus and cosmetics for Minecraft 1.21.11.",
+  "authors": [
+    "JIGNESH GAMING"
+  ],
+  "contact": {
+    "homepage": "https://github.com/blazemc125/AzyronClient",
+    "issues": "https://github.com/blazemc125/AzyronClient/issues",
+    "sources": "https://github.com/blazemc125/AzyronClient"
+  },
+  "license": "MIT",
+  "icon": "assets/azyronclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.jiggneshgaming.azyron.AzyronClientMod"
+    ]
+  },
+  "mixins": [
+    "azyronclient.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "sodium": "Optional but recommended on desktop for maximum FPS.",
+    "lithium": "Optional but recommended for server-side tick optimization.",
+    "ferrite-core": "Optional but recommended for memory reduction.",
+    "entityculling": "Optional but recommended to cull hidden entities.",
+    "moreculling": "Optional but recommended for additional culling.",
+    "dynamic-fps": "Optional — AZYRON CLIENT ships its own unfocused-FPS limiter (Dynamic FPS module)."
+  },
+  "custom": {
+    "modmenu:client_side_only": true
+  }
+}

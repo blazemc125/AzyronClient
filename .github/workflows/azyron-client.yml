@@ -1,0 +1,130 @@
+name: AZYRON CLIENT
+
+# Builds the AZYRON CLIENT Fabric mod in azyronclient/.
+# Runs the offline core self-test first (fast gate), then a full
+# Loom build against the pinned Minecraft / Fabric versions, then
+# publishes the artifacts and attaches BOTH the .jar and the .mrpack
+# to a DRAFT GitHub Release. The draft is never published automatically —
+# a human releases it.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'azyronclient/**'
+      - '.github/workflows/azyron-client.yml'
+
+permissions:
+  contents: write
+
+env:
+  MOD_DIR: azyronclient
+
+jobs:
+  core-tests:
+    name: Core self-tests (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile core library
+        working-directory: ${{ env.MOD_DIR }}
+        run: |
+          rm -rf build/ci-core
+          mkdir -p build/ci-core
+          find src/main/java/com/jiggneshgaming/azyron/core -name '*.java' > build/core-sources.txt
+          javac -encoding UTF-8 -nowarn -d build/ci-core @build/core-sources.txt
+      - name: Compile and run CoreSelfTest
+        working-directory: ${{ env.MOD_DIR }}
+        run: |
+          javac -encoding UTF-8 -nowarn -cp build/ci-core -d build/ci-core testing/CoreSelfTest.java
+          java -cp build/ci-core CoreSelfTest
+
+  build:
+    name: Build mod + modpack
+    needs: core-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Refresh Fabric version pins
+        working-directory: ${{ env.MOD_DIR }}
+        run: python3 scripts/update_pins.py
+      - name: Build the Fabric mod
+        working-directory: ${{ env.MOD_DIR }}
+        run: |
+          chmod +x gradlew
+          ./gradlew build --stacktrace
+      - name: Show resolved pins
+        working-directory: ${{ env.MOD_DIR }}
+        run: ./gradlew printPins
+      - name: Package .mrpack and release JAR
+        working-directory: ${{ env.MOD_DIR }}
+        run: |
+          set -euo pipefail
+          MC=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)
+          LOADER=$(grep '^loader_version=' gradle.properties | cut -d= -f2)
+          VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          JAR=$(ls build/libs/azyronclient-*.jar | grep -v -E 'sources|dev' | head -1)
+          mkdir -p dist
+          python3 scripts/make_mrpack.py \
+            --jar "$JAR" \
+            --out "dist/azyron-client-${VERSION}.mrpack" \
+            --mc "$MC" --version "$VERSION" --loader "$LOADER" \
+            --icon docs/azyron-icon-256.png
+          cp "$JAR" "dist/azyronclient-${VERSION}.jar"
+          ls -la dist
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: azyron-client
+          path: |
+            ${{ env.MOD_DIR }}/dist/azyron-client-*.mrpack
+            ${{ env.MOD_DIR }}/dist/azyronclient-*.jar
+          if-no-files-found: error
+
+  draft-release:
+    name: Attach files to a DRAFT GitHub release
+    # Runs only when explicitly dispatched — attaches the freshly built .jar
+    # and .mrpack to the draft release azyronclient-v1.0.0. Never publishes.
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: azyronclient-v1.0.0
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: azyron-client
+          path: dist
+      - name: Create or update the DRAFT release
+        run: |
+          set -euo pipefail
+          ls -la dist
+          JAR=$(ls dist/azyronclient-*.jar | head -1)
+          MRPACK=$(ls dist/azyron-client-*.mrpack | head -1)
+          NOTES='AZYRON CLIENT — PERFORMANCE. SMOOTHNESS. STYLE. Built by CI from the azyronclient/ directory of this branch. Artifacts: azyronclient-1.0.0.jar (Fabric mod for Minecraft 1.21.11, drop into mods/) and azyron-client-1.0.0.mrpack (Modrinth modpack: AZYRON CLIENT + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS). Verification scope: see azyronclient/TESTING-REPORT.md. DRAFT — not published. Publishing is a manual step.'
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Draft release $TAG already exists — refreshing assets."
+            gh release upload "$TAG" "$JAR" "$MRPACK" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$JAR" "$MRPACK" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "AZYRON CLIENT v1.0.0 (DRAFT)" \
+              --notes "$NOTES" \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+          echo "Draft release attached:"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets,url

@@ -1,0 +1,82 @@
+/*
+ * AZYRON CLIENT — Fabric mod build script.
+ *
+ * Builds the installable client mod JAR:
+ *   ./gradlew build
+ *
+ * The resulting JAR (build/libs/azyronclient-<version>.jar) is a Fabric
+ * mod for Minecraft 1.21.11 and works on desktop (Windows / Linux / macOS)
+ * and inside PojavLauncher (Android / iOS).
+ */
+
+plugins {
+    id 'fabric-loom' version '1.10.+'
+    id 'maven-publish'
+}
+
+base {
+    archivesName = project.archives_base_name
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+
+loom {
+    // NOTE: single (client) source set — everything in src/main/java is
+    // client-only, which is the common Loom setup for client mods.
+    mixin {
+        defaultRefmapName = 'azyronclient.refmap.json'
+    }
+}
+
+dependencies {
+    // Yarn-mapped Minecraft + Fabric toolchain.
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // Gson is bundled with Minecraft at runtime.
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+processResources {
+    inputs.property 'version', project.version
+
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = Integer.parseInt(project.java_version)
+    it.options.encoding = 'UTF-8'
+    it.options.compilerArgs += ['-Xlint:-options']
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.toVersion(project.java_version)
+    targetCompatibility = JavaVersion.toVersion(project.java_version)
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
+
+// Prints the resolved pins — useful in CI logs.
+tasks.register('printPins') {
+    doLast {
+        println "minecraft_version=${project.minecraft_version}"
+        println "yarn_mappings=${project.yarn_mappings}"
+        println "loader_version=${project.loader_version}"
+        println "fabric_api_version=${project.fabric_api_version}"
+    }
+}
