@@ -3,7 +3,7 @@
 **Date:** 2026-11-17
 **Product:** AZYRON CLIENT — edition **V2**, version **2.0.0**, by **JIGNESH GAMING**
 **Target:** Minecraft **1.21.11** (Fabric), Java 21
-**Branch:** `arena/c6abecde-azyronclient` · HEAD `5b10283` · Tag `v1-stable-pre-v2` marks the pre-upgrade tip (`955102f`)
+**Branch:** `arena/c6abecde-azyronclient` · HEAD `df3866b` (docs-only on top of code tip `5b10283`) · Tag `v1-stable-pre-v2` marks the pre-upgrade tip (`955102f`)
 **Author's environment:** headless Linux sandbox. **No Minecraft runtime, no GPU, no Android device, no Fabric Maven access from here.**
 
 > **Read this first.** "It compiles in CI" is the ceiling of what has been
@@ -16,12 +16,12 @@
 
 ## 1. What CI proves (and how)
 
-Workflow `.github/workflows/azyron-client.yml`, latest green run on the V2 tip:
+Workflow `.github/workflows/azyron-client.yml`, latest green runs on the V2 branch (code tip `5b10283` → run `45129764969`; docs tip `df3866b` → run `45131312124`):
 
 | Job | Result |
 |---|---|
-| Core self-tests (offline, Temurin 21) — `testing/CoreSelfTest.java` | ✅ PASS (run `45129764969`) |
-| Build mod + modpack — `python3 scripts/update_pins.py` then `./gradlew build` (full Loom build against real yarn-mapped MC 1.21.11) | ✅ PASS (run `45129764969`) |
+| Core self-tests (offline, Temurin 21) — `testing/CoreSelfTest.java` | ✅ PASS (runs `45129764969`, `45131312124`) |
+| Build mod + modpack — `python3 scripts/update_pins.py` then `./gradlew build` (full Loom build against real yarn-mapped MC 1.21.11) | ✅ PASS (runs `45129764969`, `45131312124`) |
 | Attach to draft release | ⏭ skipped (dispatch-only, never automatic) |
 | Android CI (PojavLauncher packaging path) | ✅ PASS (run `45129765000`) |
 
