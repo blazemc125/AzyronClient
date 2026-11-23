@@ -172,6 +172,8 @@ public final class AzyronConfig {
     }
 
     public static List<String> describe() {
-        return Collections.singletonList("AZYRON CLIENT 1.0.0 — config: " + FILE_NAME);
+        return Collections.singletonList(com.jiggneshgaming.azyron.AzyronConstants.NAME + " "
+                + com.jiggneshgaming.azyron.AzyronConstants.EDITION + " v"
+                + com.jiggneshgaming.azyron.AzyronConstants.VERSION + " — config: " + FILE_NAME);
     }
 }

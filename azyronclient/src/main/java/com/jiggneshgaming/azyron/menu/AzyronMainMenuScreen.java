@@ -153,7 +153,7 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
         Texts.draw(ctx, tr, AzyronConstants.TAGLINE, logoX, logoY + 56, AzyronConstants.COLOR_ELECTRIC, true);
 
         // Version pill under tagline.
-        String pill = "v" + AzyronConstants.VERSION + "  •  Minecraft " + AzyronConstants.MINECRAFT_VERSION;
+        String pill = "AZYRON CLIENT V2  •  v" + AzyronConstants.VERSION + "  •  Minecraft " + AzyronConstants.MINECRAFT_VERSION;
         int pillWidth = tr.getWidth(pill) + 18;
         RenderUtil.fillRoundedRect(ctx, logoX, logoY + 70, pillWidth, 15, 7, 0x5533CCFF);
         RenderUtil.drawRoundedBorder(ctx, logoX, logoY + 70, pillWidth, 15, 7, 0x9933CCFF);

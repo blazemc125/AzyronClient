@@ -321,10 +321,11 @@ percentage advances with real loading → main menu appears automatically.
 * **PojavLauncher touch devices**: screens are built for keyboards; external
   keyboard strongly recommended for the Mods Menu.
 
-## 7. Release checklist before calling 1.0 done
+## 7. Release checklist before calling V2 (2.0.0) done
 
-- [ ] CI green on `main` (core tests + Loom build + pack)
+- [ ] CI green on the release branch (core tests + Loom build + pack)
 - [ ] Manual smoke test on desktop Fabric 1.21.11 (splash → menu → world → HUD → settings)
 - [ ] Manual smoke test on PojavLauncher Android (at least one device)
 - [ ] Confirm `Right Shift` binding survives AZERTY + mobile keyboards
-- [ ] Tag `azyronclient-v1.0.0` and cut the GitHub release with JAR + `.mrpack`
+- [ ] HUD editor: drag / corner-resize / accents / visibility toggles / reset verified in-game
+- [ ] Tag `azyronclient-v2.0.0` and cut the GitHub release with JAR + `.mrpack`

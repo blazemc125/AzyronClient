@@ -9,9 +9,9 @@ Bundles:
 
 Usage:
   python3 scripts/make_mrpack.py \
-      --jar build/libs/azyronclient-1.0.0.jar \
-      --out dist/azyron-client-1.0.0.mrpack \
-      --mc 1.21.11 --version 1.0.0 \
+      --jar build/libs/azyronclient-2.0.0.jar \
+      --out dist/azyron-client-2.0.0.mrpack \
+      --mc 1.21.11 --version 2.0.0 \
       [--loader 0.17.2] [--fapi "0.129.0+1.21.11"]
 
 Only the Python standard library is used. Network access to api.modrinth.com
@@ -30,7 +30,7 @@ import zipfile
 
 API = "https://api.modrinth.com/v2"
 TIMEOUT = 60
-USER_AGENT = "azyronclient-ci/1.0 (github.com/blazemc125/AzyronClient)"
+USER_AGENT = "azyronclient-ci/2.0 (github.com/blazemc125/AzyronClient)"
 
 # slug -> (project name, environment) — environment: required on client
 OPTIMIZERS = [

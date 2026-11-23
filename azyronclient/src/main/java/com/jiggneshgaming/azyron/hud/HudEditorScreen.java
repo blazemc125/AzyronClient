@@ -50,6 +50,7 @@ public final class HudEditorScreen extends Screen {
     private String dragging;
     private int dragOffsetX;
     private int dragOffsetY;
+    private String resizing;
     private String hovered;
 
     public HudEditorScreen() {
@@ -77,7 +78,7 @@ public final class HudEditorScreen extends Screen {
         RenderUtil.fillHorizontalGradient(ctx, this.width / 2 - 130, 12, 260, 2,
                 AzyronConstants.COLOR_PURPLE, AzyronConstants.COLOR_ELECTRIC);
         Texts.drawCentered(ctx, tr, "HUD EDITOR", this.width / 2, 20, AzyronConstants.COLOR_TEXT, true);
-        Texts.drawCentered(ctx, tr, "Drag to move  •  right panel toggles modules  •  click swatches to recolor  •  ESC to finish",
+        Texts.drawCentered(ctx, tr, "Drag to move  •  drag corner square to resize  •  right panel toggles modules  •  swatches recolor  •  ESC to finish",
                 this.width / 2, 33, AzyronConstants.COLOR_TEXT_DIM, false);
 
         // Live previews of every element.
@@ -85,7 +86,7 @@ public final class HudEditorScreen extends Screen {
         for (String id : HudRenderer.ALL_IDS) {
             try {
                 AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(id);
-                int[] size = HudRenderer.measure(id, true);
+                int[] size = HudRenderer.measureScaled(id, true);
                 HudRenderer.renderElement(ctx, id, true);
                 int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
                         pos.x, pos.y, size[0], size[1], this.width, this.height);
@@ -95,9 +96,15 @@ public final class HudEditorScreen extends Screen {
             if (over) {
                 hovered = id;
             }
-            if (over || id.equals(dragging)) {
+            if (over || id.equals(dragging) || id.equals(resizing)) {
                 RenderUtil.drawRoundedBorder(ctx, ex - 2, ey - 2, size[0] + 4, size[1] + 4, 4,
                         AzyronConstants.COLOR_ELECTRIC);
+                // Resize handle — bottom-right corner square.
+                int hs = 7;
+                int hx = ex + size[0] - hs / 2;
+                int hy = ey + size[1] - hs / 2;
+                ctx.fill(hx, hy, hx + hs, hy + hs, AzyronConstants.COLOR_ELECTRIC);
+                RenderUtil.drawRoundedBorder(ctx, hx, hy, hs, hs, 2, 0xFF0B0714);
             }
             } catch (Throwable t) {
                 // A broken preview must not take down the whole editor.
@@ -150,7 +157,7 @@ public final class HudEditorScreen extends Screen {
         int doneX = this.width / 2 + 8;
         drawFooterButton(ctx, tr, resetX, y, btnW, 18, "Reset layout", BUTTON_RESET, mouseX, mouseY);
         drawFooterButton(ctx, tr, doneX, y, btnW, 18, "Done", BUTTON_DONE, mouseX, mouseY);
-        Texts.drawCentered(ctx, tr, "Elements keep their position between sessions",
+        Texts.drawCentered(ctx, tr, "Live preview — elements update instantly  •  layout is saved automatically",
                 this.width / 2, this.height - 40, 0xFF6B7280, false);
     }
 
@@ -220,9 +227,16 @@ public final class HudEditorScreen extends Screen {
             for (int i = HudRenderer.ALL_IDS.length - 1; i >= 0; i--) {
                 String id = HudRenderer.ALL_IDS[i];
                 AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(id);
-                int[] size = HudRenderer.measure(id, true);
+                int[] size = HudRenderer.measureScaled(id, true);
                 int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
                         pos.x, pos.y, size[0], size[1], this.width, this.height);
+                // Resize handle: within 9px of the bottom-right corner.
+                int hx = clamped[0] + size[0];
+                int hy = clamped[1] + size[1];
+                if (Math.abs(mouseX - hx) <= 9 && Math.abs(mouseY - hy) <= 9) {
+                    resizing = id;
+                    return true;
+                }
                 if (mouseX >= clamped[0] && mouseX < clamped[0] + size[0]
                         && mouseY >= clamped[1] && mouseY < clamped[1] + size[1]) {
                     dragging = id;
@@ -240,6 +254,19 @@ public final class HudEditorScreen extends Screen {
         double mouseX = click.x();
         double mouseY = click.y();
         int button = click.button();
+        if (resizing != null && button == 0) {
+            AzyronConfigModel config = AzyronConfig.get();
+            AzyronConfigModel.HudPosition pos = config.positionOf(resizing);
+            int[] base = HudRenderer.measure(resizing, true);
+            double hudScale = Math.max(0.01D, config.hudScale);
+            // sx/sy recover the desired *effective* scale (visual size / base size).
+            double sx = (mouseX - pos.x) / Math.max(1, base[0]);
+            double sy = (mouseY - pos.y) / Math.max(1, base[1]);
+            double desiredEffective = (sx + sy) / 2.0D;
+            // Store per-element scale on top of the global hudScale; clamped like validate() does.
+            pos.scale = Math.max(0.6D, Math.min(2.0D, desiredEffective / hudScale));
+            return true;
+        }
         if (dragging != null && button == 0) {
             AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(dragging);
             pos.x = (int) mouseX - dragOffsetX;
@@ -254,10 +281,21 @@ public final class HudEditorScreen extends Screen {
         double mouseX = click.x();
         double mouseY = click.y();
         int button = click.button();
+        if (resizing != null && button == 0) {
+            AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(resizing);
+            int[] size = HudRenderer.measureScaled(resizing, true);
+            int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
+                    pos.x, pos.y, size[0], size[1], this.width, this.height);
+            pos.x = clamped[0];
+            pos.y = clamped[1];
+            resizing = null;
+            AzyronConfig.save();
+            return true;
+        }
         if (dragging != null && button == 0) {
             // Clamp the element fully inside the screen — off-screen HUDs are a bug.
             AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(dragging);
-            int[] size = HudRenderer.measure(dragging, true);
+            int[] size = HudRenderer.measureScaled(dragging, true);
             int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
                     pos.x, pos.y, size[0], size[1], this.width, this.height);
             pos.x = clamped[0];

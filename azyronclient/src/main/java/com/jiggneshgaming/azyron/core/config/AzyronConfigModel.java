@@ -60,6 +60,8 @@ public final class AzyronConfigModel {
     public static final class HudPosition {
         public int x;
         public int y;
+        /** Per-element scale (0.6 - 2.0). Old configs deserialize as 0.0 -> normalized to 1.0. */
+        public double scale = 1.0D;
 
         public HudPosition() {
             this(4, 4);
@@ -68,10 +70,18 @@ public final class AzyronConfigModel {
         public HudPosition(int x, int y) {
             this.x = x;
             this.y = y;
+            this.scale = 1.0D;
         }
 
         public HudPosition copy() {
-            return new HudPosition(x, y);
+            HudPosition p = new HudPosition(x, y);
+            p.scale = scale;
+            return p;
+        }
+
+        /** Effective per-element scale, normalizing legacy 0.0 values. */
+        public double effectiveScale() {
+            return scale <= 0.0D ? 1.0D : clampDouble(scale, 0.6D, 2.0D);
         }
     }
 
@@ -247,6 +257,7 @@ public final class AzyronConfigModel {
                 if (p != null) {
                     p.x = clampInt(p.x, -4096, 8192);
                     p.y = clampInt(p.y, -4096, 8192);
+                    p.scale = (p.scale <= 0.0D) ? 1.0D : clampDouble(p.scale, 0.6D, 2.0D);
                 }
             }
         }

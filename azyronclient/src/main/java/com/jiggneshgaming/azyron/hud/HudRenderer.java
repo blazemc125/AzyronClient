@@ -88,12 +88,15 @@ public final class HudRenderer {
         }
         AzyronConfigModel.HudPosition pos = config.positionOf(id);
         int[] size = measure(id, demo);
-        int[] clamped = HudGeometry.clampToScreen(pos.x, pos.y, size[0], size[1],
+        float effective = (float) effectiveScale(id);
+        int[] scaledSize = new int[]{Math.max(1, Math.round(size[0] * effective)),
+                Math.max(1, Math.round(size[1] * effective))};
+        int[] clamped = HudGeometry.clampToScreen(pos.x, pos.y, scaledSize[0], scaledSize[1],
                 ClientRefs.scaledWidth(client), ClientRefs.scaledHeight(client));
         int x = clamped[0];
         int y = clamped[1];
 
-        float scale = (float) config.hudScale;
+        float scale = (float) effectiveScale(id);
         if (Math.abs(scale - 1.0F) > 0.01F) {
             ctx.getMatrices().pushMatrix();
             ctx.getMatrices().translate((float) x, (float) y);
@@ -514,6 +517,21 @@ public final class HudRenderer {
                     + "  " + times[i];
             Texts.draw(ctx, tr, label, x + 17, rowY, 0xFFE2E8F0, true);
         }
+    }
+
+    /** Combined scale for an element: global hudScale times the per-element scale. */
+    public static double effectiveScale(String id) {
+        AzyronConfigModel config = AzyronConfig.get();
+        AzyronConfigModel.HudPosition pos = config.positionOf(id);
+        return config.hudScale * pos.effectiveScale();
+    }
+
+    /** Measure an element with the combined scale applied (used for hit-testing and clamping). */
+    public static int[] measureScaled(String id, boolean demo) {
+        int[] base = measure(id, demo);
+        double scale = effectiveScale(id);
+        return new int[]{Math.max(1, (int) Math.round(base[0] * scale)),
+                Math.max(1, (int) Math.round(base[1] * scale))};
     }
 
     /* ================================================================ */

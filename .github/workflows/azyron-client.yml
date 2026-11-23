@@ -118,13 +118,13 @@ jobs:
   draft-release:
     name: Attach files to a DRAFT GitHub release
     # Runs only when explicitly dispatched — attaches the freshly built .jar
-    # and .mrpack to the draft release azyronclient-v1.0.0. Never publishes.
+    # and .mrpack to a NEW draft release for V2. Never publishes, never touches V1.
     if: github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TAG: azyronclient-v1.0.0
+      TAG: azyronclient-v2.0.0
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -136,7 +136,7 @@ jobs:
           ls -la dist
           JAR=$(ls dist/azyronclient-*.jar | head -1)
           MRPACK=$(ls dist/azyron-client-*.mrpack | head -1)
-          NOTES='AZYRON CLIENT — PERFORMANCE. SMOOTHNESS. STYLE. Built by CI from the azyronclient/ directory of this branch. Artifacts: azyronclient-1.0.0.jar (Fabric mod for Minecraft 1.21.11, drop into mods/) and azyron-client-1.0.0.mrpack (Modrinth modpack: AZYRON CLIENT + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS). Verification scope: see azyronclient/TESTING-REPORT.md. DRAFT — not published. Publishing is a manual step.'
+          NOTES='AZYRON CLIENT V2 — PERFORMANCE. SMOOTHNESS. STYLE. Built by CI from the azyronclient/ directory of this branch. Artifacts: azyronclient-2.0.0.jar (Fabric mod for Minecraft 1.21.11, drop into mods/) and azyron-client-2.0.0.mrpack (Modrinth modpack: AZYRON CLIENT V2 + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS). Verification scope: see azyronclient/TESTING-REPORT.md. DRAFT — not published. Publishing is a manual step.'
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Draft release $TAG already exists — refreshing assets."
             gh release upload "$TAG" "$JAR" "$MRPACK" --clobber --repo "$GITHUB_REPOSITORY"
@@ -144,7 +144,7 @@ jobs:
             gh release create "$TAG" "$JAR" "$MRPACK" \
               --draft \
               --target "$GITHUB_SHA" \
-              --title "AZYRON CLIENT v1.0.0 (DRAFT)" \
+              --title "AZYRON CLIENT V2 v2.0.0 (DRAFT)" \
               --notes "$NOTES" \
               --repo "$GITHUB_REPOSITORY"
           fi

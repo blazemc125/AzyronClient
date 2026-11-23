@@ -143,7 +143,7 @@ public final class AzyronLoadingScreen {
         float textAlpha = clamp01((t - 0.22F) / 0.55F);
         if (tr != null && textAlpha > 0F) {
             int welcomeY = cy + baseR + Math.round(26 * scaleF);
-            drawTrackedCentered(ctx, tr, "WELCOME TO AZYRON CLIENT", (int) midX, welcomeY,
+            drawTrackedCentered(ctx, tr, "WELCOME TO AZYRON CLIENT V2", (int) midX, welcomeY,
                     withAlpha(0xFFFFFFFF, textAlpha), 3, 1.42F * clamp(scaleF + 0.25F, 0.85F, 1.25F));
             // Micro tagline
             float tagAlpha = clamp01((t - 0.42F) / 0.55F);
@@ -216,7 +216,7 @@ public final class AzyronLoadingScreen {
         // Footer — brand, micro type.
         if (tr != null) {
             Texts.drawCentered(ctx, tr,
-                    AzyronConstants.NAME + " v" + AzyronConstants.VERSION
+                    AzyronConstants.NAME + " " + AzyronConstants.EDITION + "  v" + AzyronConstants.VERSION
                             + "   \u00B7   MC " + AzyronConstants.MINECRAFT_VERSION
                             + "   \u00B7   MADE BY " + AzyronConstants.DEVELOPER,
                     (int) midX, height - 13, 0xFF5B5B5B, false);
