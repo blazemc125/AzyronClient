@@ -12,7 +12,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.option.GraphicsOptionsScreen;
 import net.minecraft.client.gui.screen.option.KeybindsScreen;
 import net.minecraft.client.gui.screen.option.VideoOptionsScreen;
 import net.minecraft.client.option.GameOptions;
@@ -39,25 +38,17 @@ public final class AzyronQuickSettingsScreen extends BaseAzyronScreen {
     }
 
     private void openGraphics() {
-        try {
-            GameOptions o = options();
-            if (o != null) {
-                MinecraftClient.getInstance().setScreen(new GraphicsOptionsScreen(this, o));
-                return;
-            }
-        } catch (Throwable t) {
-            // fall through to the honest fallback below
-            org.slf4j.LoggerFactory.getLogger("azyronclient/quick").warn("Graphics screen unavailable: {}", t.toString());
-        }
-        MinecraftClient.getInstance().setScreen(new AzyronFpsScreen(this)); // real graphics-adjacent controls
-        note("Vanilla graphics screen unavailable — opened FPS Booster instead.");
+        // Vanilla has no separate graphics-preset screen on this version —
+        // the AZYRON FPS Booster page is the real graphics surface.
+        MinecraftClient.getInstance().setScreen(new AzyronFpsScreen(this));
     }
 
     private void openVideo() {
         try {
             GameOptions o = options();
             if (o != null) {
-                MinecraftClient.getInstance().setScreen(new VideoOptionsScreen(this, o));
+                MinecraftClient.getInstance().setScreen(
+                        new VideoOptionsScreen(this, MinecraftClient.getInstance(), o));
                 return;
             }
         } catch (Throwable t) {
@@ -108,7 +99,7 @@ public final class AzyronQuickSettingsScreen extends BaseAzyronScreen {
     private java.util.List<Tile> tiles() {
         java.util.List<Tile> list = new java.util.ArrayList<Tile>();
         MinecraftClient client = MinecraftClient.getInstance();
-        list.add(new Tile("GRAPHICS", "Fast / Fancy / Fabulous & presets", AzyronConstants.COLOR_PURPLE_BRIGHT, this::openGraphics));
+        list.add(new Tile("GRAPHICS", "Render & simulation distance, particles, entity scale", AzyronConstants.COLOR_PURPLE_BRIGHT, this::openGraphics));
         list.add(new Tile("VIDEO", "Brightness, fullscreen, FOV, bobbing", AzyronConstants.COLOR_ELECTRIC, this::openVideo));
         list.add(new Tile("CONTROLS", "Key bindings — including AZYRON keys", AzyronConstants.COLOR_PURPLE, this::openControls));
         list.add(new Tile("HUD SETTINGS", "Drag & toggle elements on the editor", AzyronConstants.COLOR_ELECTRIC_DEEP,

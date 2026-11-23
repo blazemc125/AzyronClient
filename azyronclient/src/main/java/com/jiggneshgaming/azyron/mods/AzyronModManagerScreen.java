@@ -7,8 +7,10 @@ import com.jiggneshgaming.azyron.util.RenderUtil;
 import com.jiggneshgaming.azyron.util.Texts;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
+import net.fabricmc.loader.api.Version;
 import net.fabricmc.loader.api.metadata.ModDependency;
 import net.fabricmc.loader.api.metadata.ModMetadata;
+import net.fabricmc.loader.api.metadata.version.VersionInterval;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -72,9 +74,10 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
             this.version = String.valueOf(metadata.getVersion());
             this.description = metadata.getDescription() == null ? "" : metadata.getDescription().trim();
             this.authors = joinPeople(metadata.getAuthors());
-            List<String> licenses = metadata.getLicense();
+            java.util.Collection<String> licenses = metadata.getLicense();
             this.license = licenses == null || licenses.isEmpty() ? "—" : String.join(", ", licenses);
-            this.environment = metadata.getEnvironment() == null ? "*" : metadata.getEnvironment();
+            this.environment = metadata.getEnvironment() == null
+                    ? "*" : metadata.getEnvironment().name().toLowerCase(Locale.ROOT);
             this.depProblems = analyzeDependencies(container);
         }
     }
@@ -113,7 +116,7 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
         note(mods.size() + " mods loaded");
     }
 
-    private static String joinPeople(List<net.fabricmc.loader.api.metadata.Person> people) {
+    private static String joinPeople(java.util.Collection<net.fabricmc.loader.api.metadata.Person> people) {
         if (people == null || people.isEmpty()) {
             return "—";
         }
@@ -137,12 +140,9 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
             }
             for (ModDependency dep : dependencies) {
                 String depId = dep.getModId();
-                boolean required = dep.getKind() == net.fabricmc.loader.api.metadata.ModDependency
-                        .DependencyType.DEPENDS;
-                boolean conflicts = dep.getKind() == net.fabricmc.loader.api.metadata.ModDependency
-                        .DependencyType.BREAKS
-                        || dep.getKind() == net.fabricmc.loader.api.metadata.ModDependency
-                        .DependencyType.CONFLICTS;
+                boolean required = dep.getKind() == ModDependency.Kind.DEPENDS;
+                boolean conflicts = dep.getKind() == ModDependency.Kind.BREAKS
+                        || dep.getKind() == ModDependency.Kind.CONFLICTS;
                 if (!required && !conflicts) {
                     continue;
                 }
@@ -159,12 +159,12 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
                 if (provider == null) {
                     continue; // conflicts only matter when present
                 }
-                net.fabricmc.loader.api.Version installed = provider.getMetadata().getVersion();
+                Version installed = provider.getMetadata().getVersion();
                 boolean inRange;
                 try {
-                    inRange = dep.getVersionInterval() == null || dep.getVersionInterval().contains(installed);
+                    inRange = inAnyInterval(dep.getVersionIntervals(), installed);
                 } catch (Throwable t) {
-                    inRange = true; // could not evaluate the interval — don't cry wolf
+                    inRange = true; // could not evaluate the intervals — don't cry wolf
                 }
                 if (required && !inRange) {
                     problems.add("VERSION: needs " + depId + " " + intervalText(dep) + ", found " + installed);
@@ -178,10 +178,45 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
         return problems;
     }
 
+    /** True when {@code installed} matches ANY of the dependency's intervals (or no constraint exists). */
+    private static boolean inAnyInterval(List<VersionInterval> intervals, Version installed) {
+        if (intervals == null || intervals.isEmpty()) {
+            return true; // no constraint
+        }
+        for (VersionInterval interval : intervals) {
+            if (interval == null) {
+                return true;
+            }
+            try {
+                Version min = interval.getMin();
+                Version max = interval.getMax();
+                if (min != null) {
+                    int cmp = installed.compareTo(min);
+                    if (cmp < 0 || (cmp == 0 && !interval.isMinInclusive())) {
+                        continue;
+                    }
+                }
+                if (max != null) {
+                    int cmp = installed.compareTo(max);
+                    if (cmp > 0 || (cmp == 0 && !interval.isMaxInclusive())) {
+                        continue;
+                    }
+                }
+                return true;
+            } catch (Throwable t) {
+                return true; // evaluation failed — don't report a bogus problem
+            }
+        }
+        return false;
+    }
+
     private static String intervalText(ModDependency dep) {
         try {
-            if (dep.getVersionInterval() != null) {
-                return dep.getVersionInterval().toString();
+            List<VersionInterval> intervals = dep.getVersionIntervals();
+            if (intervals != null && !intervals.isEmpty()) {
+                return String.join(" or ", intervals.stream()
+                        .map(String::valueOf)
+                        .collect(java.util.stream.Collectors.toList()));
             }
         } catch (Throwable ignored) {
             // fall through
