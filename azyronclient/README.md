@@ -82,7 +82,7 @@ Or just run `sh scripts/verify_local.sh`. See **[TESTING-REPORT.md](TESTING-REPO
 
 ### Release pipeline
 
-`.github/workflows/azyron-client.yml` — core tests → `./gradlew build` → `.mrpack` packaging → artifacts → GitHub release on tags `azyronclient-v*`.
+`.github/workflows/azyron-client.yml` — core tests → `./gradlew build` → `.mrpack` packaging → CI artifacts. A **draft** release is attached only when a maintainer runs the workflow manually (`workflow_dispatch`); publishing is always a manual step. See **[V2-REPORT.md](V2-REPORT.md)** for the honest verification status.
 
 ---
 
