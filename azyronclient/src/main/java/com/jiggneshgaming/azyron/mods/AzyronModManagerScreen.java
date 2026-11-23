@@ -342,7 +342,7 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
         int detailX = listX + listW + 16;
         int detailW = panelX + panelW - detailX - 14;
         int detailBottom = bottom;
-        RenderUtil.fillRoundedRect(ctx, detailX, listY, detailW, detailBottom - listY, 6, 0x9014100F22);
+        RenderUtil.fillRoundedRect(ctx, detailX, listY, detailW, detailBottom - listY, 6, 0x90141022);
         RenderUtil.drawRoundedBorder(ctx, detailX, listY, detailW, detailBottom - listY, 6,
                 AzyronConstants.COLOR_PANEL_BORDER);
 

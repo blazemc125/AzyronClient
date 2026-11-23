@@ -231,7 +231,7 @@ public final class AzyronScreenshotsScreen extends BaseAzyronScreen {
         int detailW = panelX + panelW - detailX - 14;
         if (selected >= 0 && selected < entries.size()) {
             Entry entry = entries.get(selected);
-            RenderUtil.fillRoundedRect(ctx, detailX, listY, detailW, bottom - listY, 6, 0x9014100F22);
+            RenderUtil.fillRoundedRect(ctx, detailX, listY, detailW, bottom - listY, 6, 0x90141022);
             RenderUtil.drawRoundedBorder(ctx, detailX, listY, detailW, bottom - listY, 6, AzyronConstants.COLOR_PANEL_BORDER);
 
             // Procedural "photo" glyph — honest artwork, not a fake pixel preview.
