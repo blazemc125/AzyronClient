@@ -142,7 +142,7 @@ public abstract class BaseAzyronScreen extends Screen {
     /** Footer chrome: version, developer credit and current profile. */
     protected void drawFooter(DrawContext ctx, TextRenderer tr) {
         int y = this.height - 13;
-        Texts.draw(ctx, tr, AzyronConstants.NAME + " v" + AzyronConstants.VERSION + " • MC " + AzyronConstants.MINECRAFT_VERSION,
+        Texts.draw(ctx, tr, AzyronConstants.NAME + " " + AzyronConstants.EDITION + "  •  v" + AzyronConstants.VERSION + "  •  MC " + AzyronConstants.MINECRAFT_VERSION,
                 8, y, 0xFF6B7280, false);
         String credit = "Made by " + AzyronConstants.DEVELOPER;
         Texts.drawCentered(ctx, tr, credit, this.width / 2, y, 0xFF8B7CF6, false);

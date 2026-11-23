@@ -12,7 +12,8 @@ public final class AzyronConstants {
     public static final String SHORT_NAME = "AZYRON";
     public static final String TAGLINE = "PERFORMANCE. SMOOTHNESS. STYLE.";
     public static final String DEVELOPER = "JIGNESH GAMING";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "2.0.0";
+    public static final String EDITION = "V2";
     public static final String MINECRAFT_VERSION = "1.21.11";
 
     /** Community Discord invite. Edit this constant to point at your own server. */

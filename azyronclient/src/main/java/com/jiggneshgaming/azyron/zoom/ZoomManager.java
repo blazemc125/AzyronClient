@@ -26,6 +26,9 @@ public final class ZoomManager {
     private static float smoothProgress = 0F;      // 0 = base fov, 1 = full zoom
     private static boolean fallbackApplied;
     private static int savedFov = -1;
+    /* ---- V2: hold/toggle mode + custom zoom key ---- */
+    private static boolean toggleZoomActive = false;
+    private static boolean zoomKeyWasDown = false;
 
     private ZoomManager() {
     }
@@ -34,21 +37,51 @@ public final class ZoomManager {
         AzyronConfigModel config = AzyronConfig.get();
         if (!config.zoomEnabled) {
             smoothProgress = approach(smoothProgress, 0F, 0.35F);
+            toggleZoomActive = false;
+            zoomKeyWasDown = false;
             currentFovOffset = ZoomMath.clampZoom((float) config.zoomLevel);
             restoreFallback();
             return;
         }
 
-        boolean held = KeyBinds.zoomIsPressed();
-        float step = config.smoothZoom ? ZoomMath.SMOOTH_STEP : ZoomMath.SNAPPY_STEP;
-        if (held) {
+        boolean down = zoomKeyDown(config);
+        boolean pressedEdge = down && !zoomKeyWasDown;
+        zoomKeyWasDown = down;
+
+        boolean zooming;
+        if (config.zoomHoldMode) {
+            zooming = down;
+        } else {
+            if (pressedEdge) {
+                toggleZoomActive = !toggleZoomActive;
+            }
+            zooming = toggleZoomActive;
+        }
+
+        float base = config.smoothZoom ? ZoomMath.SMOOTH_STEP : ZoomMath.SNAPPY_STEP;
+        float step = Math.max(0.01F, base * (float) config.zoomSensitivity);
+        if (zooming) {
             smoothProgress = approach(smoothProgress, 1F, step);
         } else {
             smoothProgress = approach(smoothProgress, 0F, step);
         }
         currentFovOffset = ZoomMath.clampZoom((float) config.zoomLevel);
 
-        applyFallbackIfNeeded(held || smoothProgress > 0.01F);
+        applyFallbackIfNeeded(zooming || smoothProgress > 0.01F);
+    }
+
+    /** Poll the configured zoom key, preferring the live window handle. */
+    private static boolean zoomKeyDown(AzyronConfigModel config) {
+        int key = config.zoomKey;
+        try {
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client != null && client.getWindow() != null) {
+                return net.minecraft.client.util.InputUtil.isKeyPressed(client.getWindow().getHandle(), key);
+            }
+        } catch (Throwable t) {
+            LOGGER.debug("Zoom key poll failed, falling back to the registered binding: {}", t.toString());
+        }
+        return KeyBinds.zoomIsPressed();
     }
 
     /** Effective zoom multiplier right now (1 when fully zoomed out). */

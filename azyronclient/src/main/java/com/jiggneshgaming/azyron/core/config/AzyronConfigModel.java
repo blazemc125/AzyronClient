@@ -40,7 +40,9 @@ public final class AzyronConfigModel {
         END_SPARKLE,
         SOUL_FLAME,
         EMBER,
-        SNOWFLAKE;
+        SNOWFLAKE,
+        VOID_AURA,
+        LIGHTNING_AURA;
 
         public static Aura fromString(String raw) {
             if (raw == null) {
@@ -108,6 +110,34 @@ public final class AzyronConfigModel {
 
     /* --------------------------------------------------- cosmetics/UI --- */
     public boolean animations = true;
+    /** Animation quality preset for AZYRON visuals: LOW / MEDIUM / HIGH. */
+    public String animationQuality = "MEDIUM";
+    /** Particle aura spawn multiplier (0.5x - 2.5x). */
+    public double auraIntensity = 1.0D;
+    /** Halves aura particle spawning for weaker devices. */
+    public boolean lowParticleMode = false;
+
+    /* -------------------------------------------------------- V2 HUD --- */
+    /** Accent color used by HUD panels, keystrokes and borders (ARGB). */
+    public int hudAccent = 0xFF33CCFF;
+
+    /* -------------------------------------------------------- V2 zoom -- */
+    /** Zoom transition speed multiplier (smoothness vs snappiness). */
+    public double zoomSensitivity = 1.0D;
+    /** true = hold key to zoom; false = press to toggle zoom on/off. */
+    public boolean zoomHoldMode = true;
+    /** Zoom key as a GLFW key code from the supported preset list. */
+    public int zoomKey = 67; // GLFW_KEY_C
+
+    /* --------------------------------------------------- V2 crosshair -- */
+    /** Thickness multiplier applied to every crosshair line. */
+    public double crosshairThickness = 1.0D;
+    /** Gap multiplier (distance between crosshair and center). */
+    public double crosshairGap = 1.0D;
+    /** Draw a dark outline behind crosshair strokes. */
+    public boolean crosshairOutline = true;
+    /** Crosshair spreads/contracts with movement. */
+    public boolean crosshairDynamic = false;
 
     /* ------------------------------------------------------ misc --- */
     public boolean firstRun = true;
@@ -127,6 +157,10 @@ public final class AzyronConfigModel {
         map.put("potions", Boolean.TRUE);
         map.put("sprint_indicator", Boolean.TRUE);
         map.put("zoom_indicator", Boolean.TRUE);
+        map.put("direction", Boolean.TRUE);
+        map.put("clock", Boolean.TRUE);
+        map.put("biome", Boolean.TRUE);
+        map.put("player_status", Boolean.TRUE);
         return map;
     }
 
@@ -141,6 +175,10 @@ public final class AzyronConfigModel {
         map.put("potions", new HudPosition(6, 340));
         map.put("sprint_indicator", new HudPosition(6, 420));
         map.put("zoom_indicator", new HudPosition(6, 444));
+        map.put("direction", new HudPosition(6, 468));
+        map.put("clock", new HudPosition(6, 492));
+        map.put("biome", new HudPosition(6, 516));
+        map.put("player_status", new HudPosition(6, 540));
         return map;
     }
 
@@ -227,6 +265,36 @@ public final class AzyronConfigModel {
         crosshairColor = 0xFF000000 | rgb;
 
         aura = Aura.fromString(aura).name();
+
+        /* ---- V2 fields ---- */
+        hudAccent = 0xFF000000 | (hudAccent & 0x00FFFFFF);
+
+        zoomSensitivity = clampDouble(zoomSensitivity, 0.25D, 2.0D);
+        int[] zoomKeys = {67, 86, 90, 88, 70}; // C, V, Z, X, F
+        boolean zoomKeyOk = false;
+        for (int key : zoomKeys) {
+            if (key == zoomKey) {
+                zoomKeyOk = true;
+                break;
+            }
+        }
+        if (!zoomKeyOk) {
+            zoomKey = 67;
+        }
+
+        crosshairThickness = clampDouble(crosshairThickness, 0.5D, 3.0D);
+        crosshairGap = clampDouble(crosshairGap, 0.25D, 3.0D);
+        auraIntensity = clampDouble(auraIntensity, 0.5D, 2.5D);
+
+        if (animationQuality == null) {
+            animationQuality = "MEDIUM";
+        } else {
+            animationQuality = animationQuality.trim().toUpperCase(java.util.Locale.ROOT);
+            if (!animationQuality.equals("LOW") && !animationQuality.equals("MEDIUM")
+                    && !animationQuality.equals("HIGH")) {
+                animationQuality = "MEDIUM";
+            }
+        }
 
         if (modules == null) {
             modules = new HashMap<String, Boolean>();

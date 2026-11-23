@@ -4,6 +4,7 @@ import com.jiggneshgaming.azyron.AzyronConstants;
 import com.jiggneshgaming.azyron.config.AzyronConfig;
 import com.jiggneshgaming.azyron.util.ClientRefs;
 import com.jiggneshgaming.azyron.util.RenderUtil;
+import com.jiggneshgaming.azyron.core.config.AzyronConfigModel;
 import com.jiggneshgaming.azyron.util.Texts;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -37,8 +38,14 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
             new Cosmetic("END_SPARKLE", "End Sparkle", "Violet-white ender motes orbit you."),
             new Cosmetic("SOUL_FLAME", "Soul Flame", "Teal soul fire swirls around you."),
             new Cosmetic("EMBER", "Ember Trail", "Warm floating embers on the move."),
-            new Cosmetic("SNOWFLAKE", "Snowflake", "Soft frosty flakes drifting by.")
+            new Cosmetic("SNOWFLAKE", "Snowflake", "Soft frosty flakes drifting by."),
+            new Cosmetic("VOID_AURA", "Void Aura", "Dark portal motes collapse into you."),
+            new Cosmetic("LIGHTNING_AURA", "Lightning Aura", "Crackling electric arcs surround you.")
     };
+
+    private final SettingSlider intensitySlider =
+            new SettingSlider("auraIntensity", 0.5D, 2.5D, 0.25D, 120, 0, 150);
+    private boolean draggingIntensity;
 
     public AzyronCosmeticsScreen(Screen backTarget) {
         super("AZYRON Cosmetics", backTarget);
@@ -56,6 +63,21 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
                 AzyronConstants.COLOR_TEXT, true);
         Texts.draw(ctx, tr, "Particle auras — apply instantly, visible to you",
                 Math.max(24, (int) (this.width * 0.06D)), 28, AzyronConstants.COLOR_TEXT_DIM, false);
+
+        int ctlY = this.height - 76;
+        int ctlX = Math.max(24, (int) (this.width * 0.06D));
+        AzyronConfigModel config = AzyronConfig.get();
+        Texts.draw(ctx, tr, "PARTICLE INTENSITY", ctlX, ctlY + 3, AzyronConstants.COLOR_TEXT_DIM, true);
+        intensitySlider.x = ctlX + 138;
+        intensitySlider.y = ctlY;
+        intensitySlider.width = 130;
+        intensitySlider.render(ctx, tr, config.auraIntensity,
+                trimZero(String.format(java.util.Locale.ROOT, "%.2fx", config.auraIntensity)));
+        // Low particle mode toggle
+        int toggleX = intensitySlider.x + intensitySlider.width + 60;
+        drawMiniToggle(ctx, toggleX, ctlY, 28, 13, config.lowParticleMode);
+        Texts.draw(ctx, tr, "LOW PARTICLES", toggleX + 36, ctlY + 3,
+                config.lowParticleMode ? AzyronConstants.COLOR_ELECTRIC : AzyronConstants.COLOR_TEXT_DIM, true);
 
         int cardW = 132;
         int cardH = 122;
@@ -124,6 +146,12 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
             case "SNOWFLAKE":
                 drawSnowflake(ctx, cx, cy, 9, 0xFFE0F2FE);
                 break;
+            case "VOID_AURA":
+                drawVoid(ctx, cx, cy);
+                break;
+            case "LIGHTNING_AURA":
+                drawBolt(ctx, cx, cy);
+                break;
             default:
                 drawNone(ctx, cx, cy, 0xFF475569);
                 break;
@@ -151,6 +179,50 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
         drawThickLine(ctx, cx - radius + 2, cy - radius + 2, cx + radius - 2, cy + radius - 2, color);
         drawThickLine(ctx, cx - radius + 2, cy + radius - 2, cx + radius - 2, cy - radius + 2, color);
         ctx.fill(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFFFFFFF);
+    }
+
+    private static void drawVoid(DrawContext ctx, int cx, int cy) {
+        // Imploding ring of dark violet — void collapse.
+        fillCircle(ctx, cx, cy, 9, 0xFF1E1030);
+        fillCircle(ctx, cx, cy, 6, 0xFF3B0764);
+        fillCircle(ctx, cx, cy, 3, 0xFF7C3AED);
+        fillCircle(ctx, cx, cy, 1, 0xFFFFFFFF);
+        drawThickLine(ctx, cx - 13, cy - 13, cx - 9, cy - 9, 0xFF7C3AED);
+        drawThickLine(ctx, cx + 13, cy - 13, cx + 9, cy - 9, 0xFF7C3AED);
+        drawThickLine(ctx, cx - 13, cy + 13, cx - 9, cy + 9, 0xFF7C3AED);
+        drawThickLine(ctx, cx + 13, cy + 13, cx + 9, cy + 9, 0xFF7C3AED);
+    }
+
+    private static void drawBolt(DrawContext ctx, int cx, int cy) {
+        // Lightning bolt — jagged filled zigzag.
+        int[][] shape = {{-2, -10}, {3, -3}, {0, -2}, {4, 8}, {-4, -1}, {-1, -2}, {-5, -10}};
+        for (int i = 0; i + 1 < shape.length; i++) {
+            drawThickLine(ctx, cx + shape[i][0], cy + shape[i][1],
+                    cx + shape[i + 1][0], cy + shape[i + 1][1], 0xFFFDE047);
+        }
+        drawThickLine(ctx, cx + 3, cy - 3, cx + 4, cy + 8, 0xFFFFFFFF);
+    }
+
+    private static String trimZero(String value) {
+        String out = value;
+        if (out.endsWith("x")) {
+            String core = out.substring(0, out.length() - 1);
+            while (core.endsWith("0")) {
+                core = core.substring(0, core.length() - 1);
+            }
+            if (core.endsWith(".")) {
+                core = core.substring(0, core.length() - 1);
+            }
+            out = core + "x";
+        }
+        return out;
+    }
+
+    private static void drawMiniToggle(DrawContext ctx, int x, int y, int width, int height, boolean on) {
+        RenderUtil.fillRoundedRect(ctx, x, y, width, height, height / 2, on ? 0xFF0E86C9 : 0xFF332A4D);
+        int knob = height - 4;
+        int knobX = on ? x + width - knob - 2 : x + 2;
+        RenderUtil.fillRoundedRect(ctx, knobX, y + 2, knob, knob, knob / 2, 0xFFF8FAFC);
     }
 
     private static void drawNone(DrawContext ctx, int cx, int cy, int color) {
@@ -225,11 +297,52 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
     /* --------------------------- events ---------------------------- */
 
     @Override
+    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
+        double mouseX = click.x();
+        double mouseY = click.y();
+        int button = click.button();
+        if (draggingIntensity && button == 0) {
+            AzyronConfig.get().auraIntensity = intensitySlider.valueForMouse(mouseX);
+            return true;
+        }
+        return super.mouseDragged(click, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(Click click) {
+        int button = click.button();
+        if (draggingIntensity) {
+            draggingIntensity = false;
+            AzyronConfig.save();
+            return true;
+        }
+        return super.mouseReleased(click);
+    }
+
+    @Override
     public boolean mouseClicked(Click click, boolean doubled) {
         double mouseX = click.x();
         double mouseY = click.y();
         int button = click.button();
         if (button == 0) {
+            int ctlY = this.height - 76;
+            int ctlX = Math.max(24, (int) (this.width * 0.06D));
+            AzyronConfigModel config = AzyronConfig.get();
+            intensitySlider.x = ctlX + 138;
+            intensitySlider.y = ctlY;
+            intensitySlider.width = 130;
+            if (intensitySlider.contains(mouseX, mouseY)) {
+                draggingIntensity = true;
+                config.auraIntensity = intensitySlider.valueForMouse(mouseX);
+                AzyronConfig.save();
+                return true;
+            }
+            int toggleX = intensitySlider.x + intensitySlider.width + 60;
+            if (mouseX >= toggleX - 2 && mouseX < toggleX + 30 && mouseY >= ctlY - 2 && mouseY < ctlY + 15) {
+                config.lowParticleMode = !config.lowParticleMode;
+                AzyronConfig.save();
+                return true;
+            }
             int cardW = 132;
             int cardH = 122;
             int gap = 12;

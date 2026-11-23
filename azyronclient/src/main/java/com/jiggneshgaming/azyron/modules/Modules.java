@@ -65,6 +65,18 @@ public final class Modules {
         list.add(new AzyronModule("hud_zoom_indicator", "Zoom Indicator",
                 "Shows the active zoom multiplier while zooming.",
                 AzyronModule.Category.HUD, false, hudDefault("zoom_indicator")));
+        list.add(new AzyronModule("hud_direction", "Direction Indicator",
+                "Cardinal direction you are facing (N/NE/E/SE/S/SW/W/NW).",
+                AzyronModule.Category.HUD, false, hudDefault("direction")));
+        list.add(new AzyronModule("hud_clock", "Clock",
+                "In-game day and 24-hour time, updated live.",
+                AzyronModule.Category.HUD, false, hudDefault("clock")));
+        list.add(new AzyronModule("hud_biome", "Biome Display",
+                "The biome you are standing in, refreshed live.",
+                AzyronModule.Category.HUD, false, hudDefault("biome")));
+        list.add(new AzyronModule("hud_player_status", "Player Status",
+                "Health and hunger at a glance.",
+                AzyronModule.Category.HUD, false, hudDefault("player_status")));
 
         /* --------------------------------------------------- gameplay -- */
         list.add(new AzyronModule(AzyronModule.ID_TOGGLE_SPRINT, "Toggle Sprint",

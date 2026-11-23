@@ -29,6 +29,24 @@ public final class HudEditorScreen extends Screen {
     private static final int BUTTON_DONE = 0;
     private static final int BUTTON_RESET = 1;
 
+    private static final String[] MODULE_LABELS = {
+            "FPS", "CPS", "Ping", "Coordinates", "Keystrokes", "Armor", "Potions",
+            "Sprint", "Zoom", "Direction", "Clock", "Biome", "Player Status"
+    };
+
+    private static final int[] HUD_ACCENTS = {
+            0xFF33CCFF, 0xFF7C3AED, 0xFF4ADE80, 0xFFFACC15, 0xFFF87171, 0xFFFFFFFF
+    };
+
+    private static int indexOf(String[] array, String target) {
+        for (int i = 0; i < array.length; i++) {
+            if (array[i].equals(target)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
     private String dragging;
     private int dragOffsetX;
     private int dragOffsetY;
@@ -59,7 +77,7 @@ public final class HudEditorScreen extends Screen {
         RenderUtil.fillHorizontalGradient(ctx, this.width / 2 - 130, 12, 260, 2,
                 AzyronConstants.COLOR_PURPLE, AzyronConstants.COLOR_ELECTRIC);
         Texts.drawCentered(ctx, tr, "HUD EDITOR", this.width / 2, 20, AzyronConstants.COLOR_TEXT, true);
-        Texts.drawCentered(ctx, tr, "Drag any element to reposition it — ESC to finish",
+        Texts.drawCentered(ctx, tr, "Drag to move  •  right panel toggles modules  •  click swatches to recolor  •  ESC to finish",
                 this.width / 2, 33, AzyronConstants.COLOR_TEXT_DIM, false);
 
         // Live previews of every element.
@@ -85,6 +103,44 @@ public final class HudEditorScreen extends Screen {
                 // A broken preview must not take down the whole editor.
                 LOGGER.debug("HUD preview failed for '{}': {}", id, t.toString());
             }
+        }
+
+        // ---- Right panel: per-module visibility toggles ----
+        int panelX = this.width - 158;
+        int panelY = 60;
+        int panelW = 146;
+        int panelH = 34 + HudRenderer.ALL_IDS.length * 17 + 8;
+        RenderUtil.fillMenuPanel(ctx, panelX, panelY, panelW, panelH, 6);
+        Texts.draw(ctx, tr, "HUD MODULES", panelX + 10, panelY + 8, AzyronConstants.COLOR_PURPLE_BRIGHT, true);
+        int rowY = panelY + 26;
+        for (String id : HudRenderer.ALL_IDS) {
+            boolean visible = AzyronConfig.get().isHudVisible(id);
+            boolean hover = mouseX >= panelX + 6 && mouseX < panelX + panelW - 6
+                    && mouseY >= rowY && mouseY < rowY + 15;
+            // checkbox
+            ctx.fill(panelX + 8, rowY + 2, panelX + 19, rowY + 13, hover ? 0xFF241A3E : 0xFF1B1332);
+            RenderUtil.drawRoundedBorder(ctx, panelX + 8, rowY + 2, 11, 11, 2,
+                    visible ? AzyronConstants.COLOR_ELECTRIC : AzyronConstants.COLOR_PANEL_BORDER);
+            if (visible) {
+                Texts.draw(ctx, tr, "x", panelX + 10, rowY + 3, AzyronConstants.COLOR_ELECTRIC, true);
+            }
+            Texts.draw(ctx, tr, MODULE_LABELS[indexOf(HudRenderer.ALL_IDS, id)],
+                    panelX + 24, rowY + 4,
+                    visible ? AzyronConstants.COLOR_TEXT : AzyronConstants.COLOR_TEXT_DIM, false);
+            rowY += 17;
+        }
+
+        // ---- Bottom-left: HUD accent swatches ----
+        int swatchY = this.height - 66;
+        int swatchX = 12;
+        Texts.draw(ctx, tr, "HUD ACCENT", swatchX, swatchY - 12, AzyronConstants.COLOR_TEXT_DIM, true);
+        int currentAccent = AzyronConfig.get().hudAccent & 0x00FFFFFF;
+        for (int i = 0; i < HUD_ACCENTS.length; i++) {
+            int sx = swatchX + i * 22;
+            boolean sel = (HUD_ACCENTS[i] & 0x00FFFFFF) == currentAccent;
+            ctx.fill(sx, swatchY, sx + 17, swatchY + 17, HUD_ACCENTS[i]);
+            RenderUtil.drawRoundedBorder(ctx, sx, swatchY, 17, 17, 3,
+                    sel ? AzyronConstants.COLOR_TEXT : AzyronConstants.COLOR_PANEL_BORDER);
         }
 
         // Footer buttons
@@ -129,6 +185,37 @@ public final class HudEditorScreen extends Screen {
             }
         }
         if (button == 0) {
+            // ---- HUD module toggle panel (right side) ----
+            int panelX = this.width - 158;
+            int panelY = 60;
+            int panelW = 146;
+            int panelH = 34 + HudRenderer.ALL_IDS.length * 17 + 8;
+            if (mouseX >= panelX && mouseX < panelX + panelW && mouseY >= panelY && mouseY < panelY + panelH) {
+                int rowY = panelY + 26;
+                for (String id : HudRenderer.ALL_IDS) {
+                    if (mouseY >= rowY && mouseY < rowY + 17) {
+                        AzyronConfigModel config = AzyronConfig.get();
+                        config.setHudVisible(id, !config.isHudVisible(id));
+                        AzyronConfig.save();
+                        return true;
+                    }
+                    rowY += 17;
+                }
+                return true; // swallow clicks anywhere inside the panel chrome
+            }
+            // ---- HUD accent swatches (bottom-left) ----
+            int swatchY = this.height - 66;
+            int swatchX = 12;
+            if (mouseY >= swatchY && mouseY < swatchY + 17) {
+                for (int i = 0; i < HUD_ACCENTS.length; i++) {
+                    int sx = swatchX + i * 22;
+                    if (mouseX >= sx && mouseX < sx + 22) {
+                        AzyronConfig.get().hudAccent = HUD_ACCENTS[i];
+                        AzyronConfig.save();
+                        return true;
+                    }
+                }
+            }
             // Hit-test elements in reverse draw order (top-most last wins).
             for (int i = HudRenderer.ALL_IDS.length - 1; i >= 0; i--) {
                 String id = HudRenderer.ALL_IDS[i];
@@ -168,6 +255,13 @@ public final class HudEditorScreen extends Screen {
         double mouseY = click.y();
         int button = click.button();
         if (dragging != null && button == 0) {
+            // Clamp the element fully inside the screen — off-screen HUDs are a bug.
+            AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(dragging);
+            int[] size = HudRenderer.measure(dragging, true);
+            int[] clamped = com.jiggneshgaming.azyron.core.hud.HudGeometry.clampToScreen(
+                    pos.x, pos.y, size[0], size[1], this.width, this.height);
+            pos.x = clamped[0];
+            pos.y = clamped[1];
             dragging = null;
             AzyronConfig.save();
             return true;

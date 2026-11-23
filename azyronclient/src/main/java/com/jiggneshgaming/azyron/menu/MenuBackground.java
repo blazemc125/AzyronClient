@@ -1,6 +1,8 @@
 package com.jiggneshgaming.azyron.menu;
 
 import com.jiggneshgaming.azyron.AzyronConstants;
+import com.jiggneshgaming.azyron.config.AzyronConfig;
+import com.jiggneshgaming.azyron.core.config.AzyronConfigModel;
 import net.minecraft.client.gui.DrawContext;
 
 /**
@@ -43,6 +45,14 @@ public final class MenuBackground {
     }
 
     public static void render(DrawContext ctx, int width, int height, long timeMs) {
+        // Animation settings (V2) — LOW and "animations off" collapse every
+        // time-based effect to a static, cheap backdrop.
+        AzyronConfigModel config = AzyronConfig.get();
+        boolean animate = config.animations;
+        String quality = config.animationQuality == null ? "MEDIUM" : config.animationQuality;
+        boolean lowQuality = "LOW".equals(quality);
+        boolean highQuality = "HIGH".equals(quality);
+        float orbScale = lowQuality || !animate ? 0.55F : (highQuality ? 1.25F : 1.0F);
         // 1) Deep vertical gradient (cached per window height).
         int[] bands = gradientColors(height);
         int bandHeight = Math.max(1, (int) Math.ceil(height / (double) GRADIENT_BANDS));
@@ -55,14 +65,20 @@ public final class MenuBackground {
         }
 
         // 2) Nebula glow orbs (translucent circles, stepped 2px rows).
-        fillGlowOrb(ctx, (int) (width * 0.16F), (int) (height * 0.78F), Math.max(90, height / 3), 0x2A7C3AED);
-        fillGlowOrb(ctx, (int) (width * 0.86F), (int) (height * 0.18F), Math.max(80, height / 4), 0x2233CCFF);
-        fillGlowOrb(ctx, (int) (width * 0.52F), (int) (height * 0.45F), Math.max(120, height / 2), 0x144C1D95);
+        fillGlowOrb(ctx, (int) (width * 0.16F), (int) (height * 0.78F), Math.max(90, height / 3), scaleAlpha(0x2A7C3AED, orbScale));
+        fillGlowOrb(ctx, (int) (width * 0.86F), (int) (height * 0.18F), Math.max(80, height / 4), scaleAlpha(0x2233CCFF, orbScale));
+        fillGlowOrb(ctx, (int) (width * 0.52F), (int) (height * 0.45F), Math.max(120, height / 2), scaleAlpha(0x144C1D95, orbScale));
 
-        // 3) Star field with twinkle.
+        // 3) Star field with twinkle (static alpha when animations are off/LOW).
         float time = (timeMs % 100_000L) / 1000.0F;
-        for (int i = 0; i < STAR_COUNT; i++) {
-            float twinkle = 0.35F + 0.65F * (0.5F + 0.5F * (float) Math.sin(time * STAR_SPEED[i] + STAR_PHASE[i]));
+        int starLimit = (animate && !lowQuality) ? STAR_COUNT : STAR_COUNT / 3;
+        for (int i = 0; i < starLimit; i++) {
+            float twinkle;
+            if (animate && !lowQuality) {
+                twinkle = 0.35F + 0.65F * (0.5F + 0.5F * (float) Math.sin(time * STAR_SPEED[i] + STAR_PHASE[i]));
+            } else {
+                twinkle = 0.5F;
+            }
             int alpha = (int) (twinkle * 200.0F);
             int x = (int) (STAR_X[i] * width);
             int y = (int) (STAR_Y[i] * height * 0.72F);
@@ -85,6 +101,12 @@ public final class MenuBackground {
                 ctx.fill(0, y0, width, Math.min(height, y0 + vBandHeight + 1), vignette[i]);
             }
         }
+    }
+
+    /** Multiply the alpha channel of an ARGB color. */
+    private static int scaleAlpha(int color, float scale) {
+        int a = Math.min(255, Math.max(0, (int) (((color >>> 24) & 0xFF) * scale)));
+        return (a << 24) | (color & 0x00FFFFFF);
     }
 
     private static int[] gradientColors(int height) {

@@ -3,7 +3,7 @@
   "id": "azyronclient",
   "version": "${version}",
   "name": "AZYRON CLIENT",
-  "description": "AZYRON CLIENT \u2014 Performance. Smoothness. Style. A premium FPS-optimization client with HUD, profiles, custom menus and cosmetics for Minecraft 1.21.11.",
+  "description": "AZYRON CLIENT V2 \u2014 Performance. Smoothness. Style. A premium FPS-optimization client: new HUD modules, FPS Booster 2.0, config profiles V2, mod manager, screenshot manager and more. Minecraft 1.21.11.",
   "authors": [
     "JIGNESH GAMING"
   ],

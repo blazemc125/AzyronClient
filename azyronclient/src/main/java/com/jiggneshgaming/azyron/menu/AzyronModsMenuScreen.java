@@ -71,6 +71,8 @@ public final class AzyronModsMenuScreen extends BaseAzyronScreen {
             y += buttonH + gap;
         }
 
+        addButton("Installed Mods", sidebarX, this.height - 66, SIDEBAR_WIDTH, 20,
+                () -> MinecraftClient.getInstance().setScreen(new com.jiggneshgaming.azyron.mods.AzyronModManagerScreen(this)));
         addButton("Back", sidebarX, this.height - 40, SIDEBAR_WIDTH, 20, this::goBack);
     }
 

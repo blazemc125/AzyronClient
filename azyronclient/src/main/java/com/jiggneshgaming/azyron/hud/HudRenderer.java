@@ -43,9 +43,14 @@ public final class HudRenderer {
     public static final String POTIONS = "potions";
     public static final String SPRINT = "sprint_indicator";
     public static final String ZOOM = "zoom_indicator";
+    public static final String DIRECTION = "direction";
+    public static final String CLOCK = "clock";
+    public static final String BIOME = "biome";
+    public static final String STATUS = "player_status";
 
     public static final String[] ALL_IDS = {
-            FPS, CPS, PING, COORDS, KEYSTROKES, ARMOR, POTIONS, SPRINT, ZOOM
+            FPS, CPS, PING, COORDS, KEYSTROKES, ARMOR, POTIONS, SPRINT, ZOOM,
+            DIRECTION, CLOCK, BIOME, STATUS
     };
 
     private HudRenderer() {
@@ -174,13 +179,117 @@ public final class HudRenderer {
                 Texts.draw(ctx, tr, text, x + 5, y + 3, AzyronConstants.COLOR_ELECTRIC, true);
                 break;
             }
+            case DIRECTION: {
+                String text;
+                if (demo) {
+                    text = "Facing: NW";
+                } else {
+                    PlayerEntity player = client.player;
+                    text = player == null ? "Facing: —" : "Facing: " + cardinalFromYaw(player.getYaw());
+                }
+                fillPanel(ctx, x, y, width, height, config);
+                Texts.draw(ctx, tr, text, x + 6, y + 3, config.hudAccent, true);
+                break;
+            }
+            case CLOCK: {
+                String text = demo ? "Day 1  •  12:00" : worldClockText(client);
+                fillPanel(ctx, x, y, width, height, config);
+                Texts.draw(ctx, tr, text, x + 6, y + 3, 0xFFE2E8F0, true);
+                break;
+            }
+            case BIOME: {
+                String text = demo ? "Biome: Plains" : "Biome: " + currentBiome(client);
+                fillPanel(ctx, x, y, width, height, config);
+                Texts.draw(ctx, tr, text, x + 6, y + 3, 0xFF9BD18B, true);
+                break;
+            }
+            case STATUS: {
+                int hp, food, maxHp;
+                if (demo) {
+                    hp = 20;
+                    food = 18;
+                    maxHp = 20;
+                } else {
+                    PlayerEntity player = client.player;
+                    if (player == null) {
+                        return;
+                    }
+                    hp = (int) Math.ceil(player.getHealth());
+                    maxHp = Math.max(1, (int) player.getMaxHealth());
+                    food = player.getHungerManager() == null ? 0 : player.getHungerManager().getFoodLevel();
+                }
+                float fraction = maxHp <= 0 ? 0F : hp / (float) maxHp;
+                int hpColor = fraction > 0.6F ? AzyronConstants.COLOR_GOOD
+                        : fraction > 0.3F ? AzyronConstants.COLOR_WARN : AzyronConstants.COLOR_BAD;
+                String text = "HP " + hp + "/" + maxHp + "   Food " + food;
+                fillPanel(ctx, x, y, width, height, config);
+                Texts.draw(ctx, tr, text, x + 6, y + 3, hpColor, true);
+                break;
+            }
             default:
                 break;
         }
     }
 
+    /* ------------------------------ V2 helpers ------------------------- */
+
+    private static String cardinalFromYaw(float yaw) {
+        float normalized = (yaw % 360F + 360F) % 360F;
+        int index = Math.round(normalized / 45F) % 8;
+        String[] dirs = {"S", "SW", "W", "NW", "N", "NE", "E", "SE"};
+        return dirs[index];
+    }
+
+    private static String worldClockText(MinecraftClient client) {
+        try {
+            if (client.world == null) {
+                return "Clock: —";
+            }
+            long time = client.world.getTimeOfDay();
+            long dayTime = ((time % 24000L) + 24000L) % 24000L;
+            int hour = (int) ((dayTime / 1000L + 6L) % 24L);
+            int minute = (int) ((dayTime % 1000L) * 60L / 1000L);
+            long day = Math.floorDiv(time, 24000L) + 1L;
+            return String.format(java.util.Locale.ROOT, "Day %d  •  %02d:%02d", day, hour, minute);
+        } catch (Throwable t) {
+            return "Clock: —";
+        }
+    }
+
+    private static String currentBiome(MinecraftClient client) {
+        try {
+            PlayerEntity player = client.player;
+            if (client.world == null || player == null) {
+                return "—";
+            }
+            net.minecraft.util.math.BlockPos pos = player.getBlockPos();
+            java.util.Optional<net.minecraft.registry.RegistryKey<net.minecraft.world.biome.Biome>> key =
+                    client.world.getBiome(pos).getKey();
+            if (!key.isPresent()) {
+                return "—";
+            }
+            String path = key.get().getValue().getPath().replace('_', ' ');
+            StringBuilder out = new StringBuilder();
+            for (String word : path.split(" ")) {
+                if (word.isEmpty()) {
+                    continue;
+                }
+                if (out.length() > 0) {
+                    out.append(' ');
+                }
+                out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+            }
+            return out.toString();
+        } catch (Throwable t) {
+            return "—";
+        }
+    }
+
     private static void fillPanel(DrawContext ctx, int x, int y, int width, int height, AzyronConfigModel config) {
         RenderUtil.fillHudPanel(ctx, x, y, width, height, config.backgroundOpacity);
+        // V2 accent strip — the user's HUD accent color anchors every panel.
+        int accent = config.hudAccent;
+        ctx.fill(x, y + 2, x + 2, y + height - 2, accent);
     }
 
     /* ------------------------------ fps / ping helpers -------------- */
@@ -434,6 +543,14 @@ public final class HudRenderer {
                 return new int[]{tr == null ? 70 : tr.getWidth("Sprint: ON") + 10, lineHeight};
             case ZOOM:
                 return new int[]{tr == null ? 76 : tr.getWidth("ZOOM x12.0") + 10, lineHeight};
+            case DIRECTION:
+                return new int[]{tr == null ? 96 : tr.getWidth("Facing: NW") + 16, lineHeight};
+            case CLOCK:
+                return new int[]{tr == null ? 104 : tr.getWidth("Day 400  •  23:59") + 16, lineHeight};
+            case BIOME:
+                return new int[]{tr == null ? 140 : tr.getWidth("Biome: Frozen Ocean") + 16, lineHeight};
+            case STATUS:
+                return new int[]{tr == null ? 150 : tr.getWidth("HP 20/20   Food 20") + 16, lineHeight};
             default:
                 return new int[]{60, lineHeight};
         }

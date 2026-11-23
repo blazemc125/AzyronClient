@@ -127,6 +127,16 @@ public final class AzyronConfig {
         }
     }
 
+    /** Replace the live model (used by config profiles) and persist it. */
+    public static synchronized void replaceModel(AzyronConfigModel fresh) {
+        if (fresh == null) {
+            return;
+        }
+        fresh.validate();
+        model = fresh;
+        save();
+    }
+
     /** Replace the live model with a fresh default one (Reset-all). */
     public static void resetAll() {
         model = new AzyronConfigModel();

@@ -41,8 +41,17 @@ public final class AuraManager {
 
         ticksSinceSpawn++;
         orbitAngle += 0.28F;
-        // Spawn a few orbiting motes per tick; ~100 particles/second max.
-        for (int i = 0; i < 2; i++) {
+        // Spawn rate respects the user's intensity setting and low-particle mode.
+        double intensity = config.auraIntensity;
+        if (Double.isNaN(intensity) || intensity < 0.5D) {
+            intensity = 1.0D;
+        }
+        int perTick = (int) Math.round(2.0D * Math.min(2.5D, intensity));
+        if (config.lowParticleMode) {
+            perTick = Math.max(1, perTick / 2);
+        }
+        perTick = Math.min(6, Math.max(1, perTick));
+        for (int i = 0; i < perTick; i++) {
             float angle = orbitAngle + i * (float) Math.PI;
             double radius = 0.75D + 0.1D * Math.sin(orbitAngle * 0.7D);
             double x = player.getX() + Math.cos(angle) * radius;
@@ -71,6 +80,14 @@ public final class AuraManager {
                     break;
                 case "SNOWFLAKE":
                     client.particleManager.addParticle(ParticleTypes.SNOWFLAKE, x, y, z, vx, vy * 0.4D, vz);
+                    break;
+                case "VOID_AURA":
+                    // Dark motes sucked inward — void portal implosion look.
+                    client.particleManager.addParticle(ParticleTypes.REVERSE_PORTAL, x, y, z, -vx * 2.4D, vy, -vz * 2.4D);
+                    break;
+                case "LIGHTNING_AURA":
+                    // Crackling electric arcs around the player.
+                    client.particleManager.addParticle(ParticleTypes.ELECTRIC_SPARK, x, y, z, vx * 3.2D, vy * 2.0D, vz * 3.2D);
                     break;
                 default:
                     break;

@@ -2,14 +2,13 @@
 
 ![AZYRON CLIENT](docs/azyron-client-hero.png)
 
-# AZYRON CLIENT
+# AZYRON CLIENT V2
 
 ### PERFORMANCE. SMOOTHNESS. STYLE.
 
-A premium FPS-optimization client for **Minecraft 1.21.11 (Fabric)** —
-custom menus, a full HUD suite, performance profiles, zoom, keystrokes,
-CPS, toggle sprint and cosmetic auras. Built for desktop **and** for
-PojavLauncher on Android / iOS.
+The V2 upgrade of **AZYRON CLIENT** for **Minecraft 1.21.11 (Fabric)** —
+FPS Booster 2.0, a rebuilt HUD suite, config profiles, a mod manager and a
+screenshot manager. Built for desktop **and** for PojavLauncher on Android / iOS.
 
 **Made by JIGNESH GAMING**
 
@@ -28,7 +27,14 @@ PojavLauncher on Android / iOS.
 | **HUD** | FPS counter (traffic-light colors), CPS (rolling 1 s window), ping, coordinates, **Keystrokes** (WASD + space + LMB/RMB with press-flash), armor durability, potion effects (name + level + timer), sprint + zoom indicators. All positions draggable in the **HUD Editor** (`H`), persisted on disk. |
 | **Gameplay** | **Toggle Sprint** (forced sprint with hunger rules), **Zoom** (`C`, eased or snappy), **Custom Crosshair** (DOT / PLUS / CLASSIC / CIRCLE / T-SHAPE, color + size, hides vanilla). |
 | **Cosmetics** | Client-side particle auras — End Sparkle, Soul Flame, Ember Trail, Snowflake. Equip instantly, visible to you (server sync is future work). |
-| **Branding** | AZYRON startup splash with tagline, per-glyph gradient logo, profile chip on the main menu, Discord panel. |
+| **V2 HUD modules** | Everything from V1 plus **Direction**, **Clock**, **Biome** and **Player Status** — all draggable, toggleable and recolorable in the HUD Editor. |
+| **FPS Booster V2** | Dedicated page: Potato / Balanced / Smooth bundles, one-click optimize, render & simulation distance presets, particle controls, entity render-distance scaling, background (unfocused) FPS cap. Live FPS readout. |
+| **Config Profiles** | Save / load / rename / delete whole client setups as JSON, export/import them anywhere, built-in Potato/Balanced/Smooth baselines. Settings auto-save as before. |
+| **Mod Manager** | Every loaded Fabric mod with real metadata — search, client/universal filter, dependency & compatibility analysis (missing / version / conflicts), authors, license, environment, mods-folder shortcut. |
+| **Screenshot Manager** | In-game list of everything in `screenshots/` — dimensions (read via NativeImage), size, date — one click opens the real file or the folder. |
+| **Quick Settings** | Six tiles: Graphics, Video, Controls, HUD Settings, FPS Settings, Client Settings. |
+| **Update Checker** | Checks the official GitHub release off-thread; shows current vs latest; opens the release page — never downloads or installs anything by itself. |
+| **Branding** | AZYRON premium startup screen (black & white, real reload progress), per-glyph gradient logo, profile chip, Discord panel, "V2" edition in the footer. |
 
 Default keys: `Right Shift` Mods Menu · `C` Zoom (hold) · `R` Toggle sprint · `H` HUD editor · `Esc` back.
 
@@ -39,7 +45,7 @@ Default keys: `Right Shift` Mods Menu · `C` Zoom (hold) · `R` Toggle sprint ·
 ### Desktop (Windows / Linux / macOS)
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for **Minecraft 1.21.11** and [Fabric API](https://modrinth.com/mod/fabric-api).
-2. Download `azyronclient-1.0.0.jar` (from **Releases** or the CI artifact) and drop it into your `mods/` folder.
+2. Download `azyronclient-2.0.0.jar` (from **Releases** or the CI artifact) and drop it into your `mods/` folder.
 3. Launch the Fabric profile — the AZYRON main menu replaces the vanilla title screen.
 
 ### Android / iOS (PojavLauncher)
@@ -48,7 +54,7 @@ See **[docs/INSTALL-POJAVLAUNCHER.md](docs/INSTALL-POJAVLAUNCHER.md)** — full 
 
 ### Modpack (`.mrpack`)
 
-`azyron-client-1.0.0.mrpack` is a ready-made Modrinth pack: **AZYRON CLIENT + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS**, pinned for Minecraft 1.21.11. Import it into any Modrinth-compatible launcher (Prism, Modrinth App, PojavLauncher's Modrinth browser).
+`azyron-client-2.0.0.mrpack` is a ready-made Modrinth pack: **AZYRON CLIENT + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS**, pinned for Minecraft 1.21.11. Import it into any Modrinth-compatible launcher (Prism, Modrinth App, PojavLauncher's Modrinth browser).
 
 ---
 
@@ -60,7 +66,7 @@ Requires **JDK 21** and network access to Mojang / Fabric / Gradle Maven.
 cd azyronclient
 python3 scripts/update_pins.py   # refresh Fabric pins (optional; CI always runs it)
 ./gradlew build
-# → build/libs/azyronclient-1.0.0.jar
+# → build/libs/azyronclient-2.0.0.jar
 ```
 
 ### Verify the dependency-free core (no network needed)

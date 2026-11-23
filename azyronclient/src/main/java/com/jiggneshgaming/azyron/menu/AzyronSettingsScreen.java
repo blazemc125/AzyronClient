@@ -3,8 +3,15 @@ package com.jiggneshgaming.azyron.menu;
 import com.jiggneshgaming.azyron.AzyronConstants;
 import com.jiggneshgaming.azyron.config.AzyronConfig;
 import com.jiggneshgaming.azyron.core.config.AzyronConfigModel;
+import com.jiggneshgaming.azyron.fps.AzyronFpsScreen;
+import com.jiggneshgaming.azyron.mods.AzyronModManagerScreen;
+import com.jiggneshgaming.azyron.profiles.AzyronProfilesScreen;
+import com.jiggneshgaming.azyron.quicksettings.AzyronQuickSettingsScreen;
+import com.jiggneshgaming.azyron.screenshots.AzyronScreenshotsScreen;
+import com.jiggneshgaming.azyron.util.Links;
 import com.jiggneshgaming.azyron.util.RenderUtil;
 import com.jiggneshgaming.azyron.util.Texts;
+import com.jiggneshgaming.azyron.util.UpdateChecker;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -29,8 +36,14 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
             0xFF33CCFF, 0xFF7C3AED, 0xFF4ADE80, 0xFFFACC15, 0xFFF87171, 0xFFF472B6, 0xFFFFFFFF
     };
 
-    private static final int ROW_HEIGHT = 22;
-    private static final int SECTION_HEIGHT = 17;
+    /** Supported zoom-key presets (GLFW codes) and their display names. */
+    private static final int[] ZOOM_KEYS = {67, 86, 90, 88, 70};
+    private static final String[] ZOOM_KEY_NAMES = {"C", "V", "Z", "X", "F"};
+    private static final int[] ACCENTS = {0xFF33CCFF, 0xFF7C3AED, 0xFF4ADE80, 0xFFFACC15, 0xFFF87171, 0xFFFFFFFF};
+    private static final String[] ACCENT_NAMES = {"Electric", "Amethyst", "Emerald", "Amber", "Crimson", "White"};
+
+    private static final int ROW_HEIGHT = 18;
+    private static final int SECTION_HEIGHT = 13;
 
     private interface Row {
         // marker interface
@@ -136,40 +149,154 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
     }
 
     private void buildRows() {
+        // Row lambdas must follow the LIVE model — config profiles can swap
+        // the instance at runtime (AzyronConfig.replaceModel).
         AzyronConfigModel config = AzyronConfig.get();
 
         rows.add(new SectionRow("Zoom"));
         rows.add(new SliderRow("Zoom strength", newSlider("zoomLevel", 2.0D, 8.0D, 0.5D),
-                () -> config.zoomLevel, v -> config.zoomLevel = v,
+                () -> AzyronConfig.get().zoomLevel, v -> AzyronConfig.get().zoomLevel = v,
                 v -> trim(String.format(java.util.Locale.ROOT, "%.1fx", v))));
-        rows.add(new ToggleRow("Smooth zoom", () -> config.smoothZoom, v -> config.smoothZoom = v));
-        rows.add(new ToggleRow("Zoom enabled", () -> config.zoomEnabled, v -> config.zoomEnabled = v));
+        rows.add(new SliderRow("Zoom speed", newSlider("zoomSpeed", 0.25D, 2.0D, 0.25D),
+                () -> AzyronConfig.get().zoomSensitivity, v -> AzyronConfig.get().zoomSensitivity = v,
+                v -> trim(String.format(java.util.Locale.ROOT, "%.2fx", v))));
+        rows.add(new ToggleRow("Smooth zoom", () -> AzyronConfig.get().smoothZoom, v -> AzyronConfig.get().smoothZoom = v));
+        rows.add(new ToggleRow("Zoom enabled", () -> AzyronConfig.get().zoomEnabled, v -> AzyronConfig.get().zoomEnabled = v));
+        rows.add(new CycleRow("Zoom key", () -> cycleZoomKey(), () -> zoomKeyName()));
+        rows.add(new ToggleRow("Hold to zoom (off = press to toggle)",
+                () -> AzyronConfig.get().zoomHoldMode, v -> AzyronConfig.get().zoomHoldMode = v));
 
         rows.add(new SectionRow("Custom Crosshair"));
-        rows.add(new CycleRow("Style", () -> cycleStyle(config), () -> config.crosshairStyle));
+        rows.add(new CycleRow("Style", () -> cycleStyle(AzyronConfig.get()), () -> AzyronConfig.get().crosshairStyle));
         rows.add(new ColorsRow());
         rows.add(new SliderRow("Size", newSlider("crosshairSize", 0.5D, 3.0D, 0.25D),
-                () -> config.crosshairSize, v -> config.crosshairSize = v,
+                () -> AzyronConfig.get().crosshairSize, v -> AzyronConfig.get().crosshairSize = v,
                 v -> trim(String.format(java.util.Locale.ROOT, "%.2fx", v))));
-        rows.add(new ToggleRow("Hide vanilla crosshair", () -> config.hideVanillaCrosshair, v -> config.hideVanillaCrosshair = v));
+        rows.add(new SliderRow("Thickness", newSlider("crosshairThickness", 0.5D, 3.0D, 0.25D),
+                () -> AzyronConfig.get().crosshairThickness, v -> AzyronConfig.get().crosshairThickness = v,
+                v -> trim(String.format(java.util.Locale.ROOT, "%.2fx", v))));
+        rows.add(new SliderRow("Gap", newSlider("crosshairGap", 0.25D, 3.0D, 0.25D),
+                () -> AzyronConfig.get().crosshairGap, v -> AzyronConfig.get().crosshairGap = v,
+                v -> trim(String.format(java.util.Locale.ROOT, "%.2fx", v))));
+        rows.add(new ToggleRow("Outline",
+                () -> AzyronConfig.get().crosshairOutline, v -> AzyronConfig.get().crosshairOutline = v));
+        rows.add(new ToggleRow("Dynamic (spreads when you move)",
+                () -> AzyronConfig.get().crosshairDynamic, v -> AzyronConfig.get().crosshairDynamic = v));
+        rows.add(new CycleRow("Reset crosshair", () -> resetCrosshair(), () -> "Defaults"));
+        rows.add(new ToggleRow("Hide vanilla crosshair", () -> AzyronConfig.get().hideVanillaCrosshair, v -> AzyronConfig.get().hideVanillaCrosshair = v));
 
         rows.add(new SectionRow("HUD"));
         rows.add(new SliderRow("HUD scale", newSlider("hudScale", 0.5D, 2.0D, 0.25D),
-                () -> config.hudScale, v -> config.hudScale = v,
+                () -> AzyronConfig.get().hudScale, v -> AzyronConfig.get().hudScale = v,
                 v -> trim(String.format(java.util.Locale.ROOT, "%.2fx", v))));
         rows.add(new SliderRow("Background opacity", newSlider("backgroundOpacity", 0.0D, 0.9D, 0.05D),
-                () -> config.backgroundOpacity, v -> config.backgroundOpacity = v,
+                () -> AzyronConfig.get().backgroundOpacity, v -> AzyronConfig.get().backgroundOpacity = v,
                 v -> Integer.toString((int) Math.round(v * 100)) + "%"));
+        rows.add(new CycleRow("HUD accent", () -> cycleAccent(), () -> accentName()));
 
         rows.add(new SectionRow("Performance"));
-        rows.add(new ToggleRow("Toggle sprint", () -> config.toggleSprint, v -> config.toggleSprint = v));
-        rows.add(new ToggleRow("Dynamic FPS (unfocused)", () -> config.dynamicFps, v -> config.dynamicFps = v));
+        rows.add(new ToggleRow("Toggle sprint", () -> AzyronConfig.get().toggleSprint, v -> AzyronConfig.get().toggleSprint = v));
+        rows.add(new ToggleRow("Dynamic FPS (unfocused)", () -> AzyronConfig.get().dynamicFps, v -> AzyronConfig.get().dynamicFps = v));
         rows.add(new SliderRow("Unfocused FPS cap", newSlider("unfocusedFps", 1.0D, 60.0D, 1.0D),
-                () -> (double) config.unfocusedFps, v -> config.unfocusedFps = (int) Math.round(v),
+                () -> (double) config.unfocusedFps, v -> AzyronConfig.get().unfocusedFps = (int) Math.round(v),
                 v -> Integer.toString((int) Math.round(v)) + " fps"));
 
         rows.add(new SectionRow("Interface"));
-        rows.add(new ToggleRow("Menu animations", () -> config.animations, v -> config.animations = v));
+        rows.add(new ToggleRow("Menu animations", () -> AzyronConfig.get().animations, v -> AzyronConfig.get().animations = v));
+        rows.add(new CycleRow("Animation quality", () -> cycleAnimationQuality(), () -> AzyronConfig.get().animationQuality));
+
+        rows.add(new SectionRow("Updates"));
+        rows.add(new CycleRow("Check for updates", () -> UpdateChecker.checkAsync(),
+                () -> updateBadge()));
+        rows.add(new CycleRow("Release page", () -> Links.open(UpdateChecker.RELEASES_PAGE),
+                () -> "Open"));
+    }
+
+    private static String zoomKeyName() {
+        int key = AzyronConfig.get().zoomKey;
+        for (int i = 0; i < ZOOM_KEYS.length; i++) {
+            if (ZOOM_KEYS[i] == key) {
+                return ZOOM_KEY_NAMES[i];
+            }
+        }
+        return "C";
+    }
+
+    private static String cycleZoomKey() {
+        AzyronConfigModel config = AzyronConfig.get();
+        int index = 0;
+        for (int i = 0; i < ZOOM_KEYS.length; i++) {
+            if (ZOOM_KEYS[i] == config.zoomKey) {
+                index = i;
+                break;
+            }
+        }
+        config.zoomKey = ZOOM_KEYS[(index + 1) % ZOOM_KEYS.length];
+        AzyronConfig.save();
+        return zoomKeyName();
+    }
+
+    private static String accentName() {
+        int accent = AzyronConfig.get().hudAccent;
+        for (int i = 0; i < ACCENTS.length; i++) {
+            if ((ACCENTS[i] & 0x00FFFFFF) == (accent & 0x00FFFFFF)) {
+                return ACCENT_NAMES[i];
+            }
+        }
+        return "Custom";
+    }
+
+    private static String cycleAccent() {
+        AzyronConfigModel config = AzyronConfig.get();
+        int index = 0;
+        for (int i = 0; i < ACCENTS.length; i++) {
+            if ((ACCENTS[i] & 0x00FFFFFF) == (config.hudAccent & 0x00FFFFFF)) {
+                index = i;
+                break;
+            }
+        }
+        config.hudAccent = ACCENTS[(index + 1) % ACCENTS.length];
+        AzyronConfig.save();
+        return accentName();
+    }
+
+    private static String cycleAnimationQuality() {
+        AzyronConfigModel config = AzyronConfig.get();
+        String current = config.animationQuality == null ? "MEDIUM" : config.animationQuality;
+        String next = current.equals("LOW") ? "MEDIUM" : current.equals("MEDIUM") ? "HIGH" : "LOW";
+        config.animationQuality = next;
+        AzyronConfig.save();
+        return next;
+    }
+
+    private static String updateBadge() {
+        switch (UpdateChecker.state()) {
+            case CHECKING:
+                return "Checking...";
+            case UP_TO_DATE:
+                return "Up to date";
+            case UPDATE_AVAILABLE:
+                return "v" + UpdateChecker.latestVersion() + " AVAILABLE";
+            case ERROR:
+                return "Failed — retry";
+            default:
+                return "Check now";
+        }
+    }
+
+    /** Restore every crosshair option to the factory defaults. */
+    private static String resetCrosshair() {
+        AzyronConfigModel config = AzyronConfig.get();
+        config.crosshairStyle = "CLASSIC";
+        config.crosshairColor = 0xFF33CCFF;
+        config.crosshairSize = 1.0D;
+        config.crosshairThickness = 1.0D;
+        config.crosshairGap = 1.0D;
+        config.crosshairOutline = true;
+        config.crosshairDynamic = false;
+        config.hideVanillaCrosshair = true;
+        AzyronConfig.save();
+        return "Defaults";
     }
 
     private static String trim(String value) {
@@ -193,7 +320,7 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
     /** Compute absolute Y positions for each row; called on render and click. */
     private void layoutRows() {
         rowY.clear();
-        int y = 30 + 40;
+        int y = 26 + 32;
         for (Row row : rows) {
             if (row instanceof SectionRow) {
                 rowY.add(y);
@@ -215,7 +342,7 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
     protected void buildButtons() {
         int panelX = panelX();
         int panelW = panelWidth();
-        int y = this.height - 34;
+        int y = this.height - 30;
 
         addButton("Reset HUD layout", panelX, y, 132, 22, () -> {
             AzyronConfig.get().resetPositions();
@@ -223,6 +350,22 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
         });
         this.resetAllButton = addButton("Reset EVERYTHING", panelX + panelW - 148, y, 148, 22, this::onResetAll);
         addButton("Back", panelX + 140, y, 84, 22, this::goBack);
+
+        // V2 navigation row — every destination, one tap away.
+        int navY = this.height - 56;
+        int navWidth = 90;
+        int navGap = 4;
+        int navX = panelX;
+        addButton("FPS Booster", navX, navY, navWidth, 18,
+                () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new AzyronFpsScreen(this)));
+        addButton("Quick Settings", navX + (navWidth + navGap), navY, navWidth, 18,
+                () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new AzyronQuickSettingsScreen(this)));
+        addButton("Screenshots", navX + (navWidth + navGap) * 2, navY, navWidth, 18,
+                () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new AzyronScreenshotsScreen(this)));
+        addButton("Profiles", navX + (navWidth + navGap) * 3, navY, navWidth, 18,
+                () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new AzyronProfilesScreen(this)));
+        addButton("Mod Manager", navX + (navWidth + navGap) * 4, navY, 104, 18,
+                () -> net.minecraft.client.MinecraftClient.getInstance().setScreen(new AzyronModManagerScreen(this)));
     }
 
     private void onResetAll() {
@@ -244,13 +387,13 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
         }
         int panelX = panelX();
         int panelW = panelWidth();
-        int panelY = 30;
-        int panelH = this.height - 74;
+        int panelY = 26;
+        int panelH = this.height - 94;
 
         RenderUtil.fillMenuPanel(ctx, panelX, panelY, panelW, panelH, 8);
-        Texts.draw(ctx, tr, "AZYRON SETTINGS", panelX + 14, panelY + 11, AzyronConstants.COLOR_TEXT, true);
-        Texts.draw(ctx, tr, "Every option applies live — no restart required",
-                panelX + 14, panelY + 23, AzyronConstants.COLOR_TEXT_DIM, false);
+        Texts.draw(ctx, tr, "AZYRON SETTINGS", panelX + 14, panelY + 8, AzyronConstants.COLOR_TEXT, true);
+        Texts.draw(ctx, tr, "AZYRON CLIENT V2 — every option applies live",
+                panelX + 14, panelY + 19, AzyronConstants.COLOR_TEXT_DIM, false);
 
         layoutRows();
         int index = 0;
@@ -277,9 +420,15 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
             }
         }
 
+        int statusColor = UpdateChecker.state() == UpdateChecker.State.UPDATE_AVAILABLE
+                ? AzyronConstants.COLOR_WARN
+                : (UpdateChecker.state() == UpdateChecker.State.ERROR ? AzyronConstants.COLOR_BAD : AzyronConstants.COLOR_TEXT_DIM);
+        Texts.draw(ctx, tr, "Updates: " + UpdateChecker.statusLine(),
+                panelX + 14, panelY + panelH - 14, statusColor, false);
+
         if (resetAllArmedAt != 0L && System.currentTimeMillis() - resetAllArmedAt < 3500L) {
             Texts.draw(ctx, tr, "Click Reset EVERYTHING again to wipe every setting!",
-                    panelX + 14, this.height - 62, AzyronConstants.COLOR_BAD, true);
+                    panelX + 14, this.height - 66, AzyronConstants.COLOR_BAD, true);
         }
     }
 
