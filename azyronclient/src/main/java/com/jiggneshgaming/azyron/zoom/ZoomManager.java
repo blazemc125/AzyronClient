@@ -5,6 +5,7 @@ import com.jiggneshgaming.azyron.core.config.AzyronConfigModel;
 import com.jiggneshgaming.azyron.core.zoom.ZoomMath;
 import com.jiggneshgaming.azyron.keybinds.KeyBinds;
 import net.minecraft.client.MinecraftClient;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +77,9 @@ public final class ZoomManager {
         try {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client != null && client.getWindow() != null) {
-                return net.minecraft.client.util.InputUtil.isKeyPressed(client.getWindow().getHandle(), key);
+                // Raw GLFW poll — same pattern as KeystrokesTracker/CpsManager;
+                // avoids version-specific yarn helpers entirely.
+                return GLFW.glfwGetKey(client.getWindow().getHandle(), key) == GLFW.GLFW_PRESS;
             }
         } catch (Throwable t) {
             LOGGER.debug("Zoom key poll failed, falling back to the registered binding: {}", t.toString());
