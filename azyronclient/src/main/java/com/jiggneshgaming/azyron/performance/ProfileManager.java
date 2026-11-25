@@ -6,7 +6,7 @@ import com.jiggneshgaming.azyron.util.TextHelper;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GraphicsMode;
 import net.minecraft.client.option.SimpleOption;
-import net.minecraft.particle.ParticlesMode;
+import com.jiggneshgaming.azyron.compat.ParticlesCompat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,10 +96,11 @@ public final class ProfileManager {
 
     private static void setParticles(net.minecraft.client.option.GameOptions options, int particles) {
         try {
-            ParticlesMode[] values = ParticlesMode.values();
+            // ParticlesMode moved packages in 1.21.2 — resolved reflectively.
             // yarn order is All, Decreased, Minimal — matching PARTICLES_* constants.
-            ParticlesMode target = values[Math.max(0, Math.min(values.length - 1, particles))];
-            options.getParticles().setValue(target);
+            if (!ParticlesCompat.setLevel(options, particles)) {
+                LOGGER.warn("Could not apply particles mode {}: option not resolvable on this version.", particles);
+            }
         } catch (Throwable t) {
             LOGGER.warn("Could not apply particles mode {}: {}", particles, t.toString());
         }

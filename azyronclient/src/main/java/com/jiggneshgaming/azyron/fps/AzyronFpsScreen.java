@@ -80,11 +80,11 @@ public final class AzyronFpsScreen extends BaseAzyronScreen {
         }
         // Particles control.
         addButton("PARTICLES: ALL", chipX, simY + 46, 150, 20,
-                () -> cycleParticles(net.minecraft.particle.ParticlesMode.ALL));
+                () -> cycleParticles(com.jiggneshgaming.azyron.core.profile.PerformanceProfile.PARTICLES_ALL));
         addButton("DECREASED", chipX + 158, simY + 46, 96, 20,
-                () -> cycleParticles(net.minecraft.particle.ParticlesMode.DECREASED));
+                () -> cycleParticles(com.jiggneshgaming.azyron.core.profile.PerformanceProfile.PARTICLES_DECREASED));
         addButton("MINIMAL", chipX + 262, simY + 46, 96, 20,
-                () -> cycleParticles(net.minecraft.particle.ParticlesMode.MINIMAL));
+                () -> cycleParticles(com.jiggneshgaming.azyron.core.profile.PerformanceProfile.PARTICLES_MINIMAL));
         // Entity render-distance scaling.
         int entY = simY + 92;
         for (int i = 0; i < ENTITY_SCALES.length; i++) {
@@ -109,11 +109,15 @@ public final class AzyronFpsScreen extends BaseAzyronScreen {
         }
     }
 
-    private void cycleParticles(net.minecraft.particle.ParticlesMode mode) {
+    private void cycleParticles(int level) {
         withOptions(opts -> {
-            setOption(opts.getParticles(), mode, "particles");
-            saveOptions(opts);
-            note("Particles → " + mode.toString());
+            // ParticlesMode moved packages in 1.21.2 — resolved reflectively.
+            if (com.jiggneshgaming.azyron.compat.ParticlesCompat.setLevel(opts, level)) {
+                saveOptions(opts);
+                note("Particles → " + com.jiggneshgaming.azyron.compat.ParticlesCompat.label(level));
+            } else {
+                note("Particles option is not available yet.");
+            }
         });
     }
 
