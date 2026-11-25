@@ -8,6 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
+import com.jiggneshgaming.azyron.compat.MatrixHelper;
 /**
  * AZYRON CLIENT — premium black & white loading screen.
  *
@@ -168,13 +169,13 @@ public final class AzyronLoadingScreen {
         if (tr != null && uiAlpha > 0F) {
             String pctText = pct + "%";
             int pctColor = withAlpha(0xFFFFFFFF, uiAlpha);
-            ctx.getMatrices().pushMatrix();
+            MatrixHelper.pushMatrix(ctx.getMatrices());
             float s = 1.62F * clamp(scaleF + 0.15F, 0.85F, 1.2F);
             int textW = tr.getWidth(pctText);
-            ctx.getMatrices().translate((float) ((int) midX - (int) (textW * s / 2.0F)), (float) (barY - Math.round(34 * scaleF)));
-            ctx.getMatrices().scale(s, s);
+            MatrixHelper.translate(ctx.getMatrices(), (float) ((int) midX - (int) (textW * s / 2.0F)), (float) (barY - Math.round(34 * scaleF)));
+            MatrixHelper.scale(ctx.getMatrices(), s, s);
             Texts.draw(ctx, tr, pctText, 0, 0, pctColor, true);
-            ctx.getMatrices().popMatrix();
+            MatrixHelper.popMatrix(ctx.getMatrices());
         }
 
         // Track
@@ -276,17 +277,17 @@ public final class AzyronLoadingScreen {
             // Glow: 4 diagonal offset passes at low alpha.
             int glow = withAlpha(0x22FFFFFF, alpha);
             for (int[] off : new int[][]{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}) {
-                ctx.getMatrices().pushMatrix();
-                ctx.getMatrices().translate((float) (cx - ox + off[0]), (float) (cy - oy + off[1]));
-                ctx.getMatrices().scale(s, s);
+                MatrixHelper.pushMatrix(ctx.getMatrices());
+                MatrixHelper.translate(ctx.getMatrices(), (float) (cx - ox + off[0]), (float) (cy - oy + off[1]));
+                MatrixHelper.scale(ctx.getMatrices(), s, s);
                 Texts.draw(ctx, tr, "AS", 0, 0, glow, false);
-                ctx.getMatrices().popMatrix();
+                MatrixHelper.popMatrix(ctx.getMatrices());
             }
-            ctx.getMatrices().pushMatrix();
-            ctx.getMatrices().translate((float) (cx - ox), (float) (cy - oy));
-            ctx.getMatrices().scale(s, s);
+            MatrixHelper.pushMatrix(ctx.getMatrices());
+            MatrixHelper.translate(ctx.getMatrices(), (float) (cx - ox), (float) (cy - oy));
+            MatrixHelper.scale(ctx.getMatrices(), s, s);
             Texts.draw(ctx, tr, "AS", 0, 0, withAlpha(0xFFFFFFFF, alpha), true);
-            ctx.getMatrices().popMatrix();
+            MatrixHelper.popMatrix(ctx.getMatrices());
         }
 
         // Orbiting spark — a single photon circling with two ghosts behind it.
@@ -396,9 +397,9 @@ public final class AzyronLoadingScreen {
             }
         }
         float drawWidth = width * scale;
-        ctx.getMatrices().pushMatrix();
-        ctx.getMatrices().translate((float) (centerX - drawWidth / 2.0F), (float) y);
-        ctx.getMatrices().scale(scale, scale);
+        MatrixHelper.pushMatrix(ctx.getMatrices());
+        MatrixHelper.translate(ctx.getMatrices(), (float) (centerX - drawWidth / 2.0F), (float) y);
+        MatrixHelper.scale(ctx.getMatrices(), scale, scale);
         int cursor = 0;
         for (int i = 0; i < text.length(); i++) {
             char ch = text.charAt(i);
@@ -406,7 +407,7 @@ public final class AzyronLoadingScreen {
             Texts.draw(ctx, tr, s, cursor, 0, color, false);
             cursor += tr.getWidth(s) + Math.round(tracking);
         }
-        ctx.getMatrices().popMatrix();
+        MatrixHelper.popMatrix(ctx.getMatrices());
     }
 
     /** Multiply a color's alpha channel by a 0..1 factor. */

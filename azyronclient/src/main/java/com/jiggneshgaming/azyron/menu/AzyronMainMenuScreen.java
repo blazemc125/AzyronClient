@@ -17,6 +17,7 @@ import net.minecraft.client.gui.screen.option.OptionsScreen;
 import net.minecraft.client.resource.language.LanguageManager;
 import net.minecraft.client.option.GameOptions;
 
+import com.jiggneshgaming.azyron.compat.MatrixHelper;
 /**
  * AZYRON CLIENT — premium main menu.
  *
@@ -195,11 +196,11 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
     /** Scale-rendered gradient logo text using the model matrix. */
     private void drawScaled(DrawContext ctx, TextRenderer tr, int x, int y, float scale,
                             String text, int fromColor, int toColor) {
-        ctx.getMatrices().pushMatrix();
-        ctx.getMatrices().translate((float) x, (float) y);
-        ctx.getMatrices().scale(scale, scale);
+        MatrixHelper.pushMatrix(ctx.getMatrices());
+        MatrixHelper.translate(ctx.getMatrices(), (float) x, (float) y);
+        MatrixHelper.scale(ctx.getMatrices(), scale, scale);
         RenderUtil.drawGradientText(ctx, tr, text, 0, 0, fromColor, toColor, true);
-        ctx.getMatrices().popMatrix();
+        MatrixHelper.popMatrix(ctx.getMatrices());
     }
 
     /** Concentric-ring crest with a gradient "A". */
@@ -220,12 +221,12 @@ public final class AzyronMainMenuScreen extends BaseAzyronScreen {
         // Gradient A glyph
         String a = "A";
         int glyphWidth = tr.getWidth(a);
-        ctx.getMatrices().pushMatrix();
-        ctx.getMatrices().translate((float) (cx - glyphWidth * 2.6D), (float) (cy - 18.0D));
-        ctx.getMatrices().scale(5.2F, 5.2F);
+        MatrixHelper.pushMatrix(ctx.getMatrices());
+        MatrixHelper.translate(ctx.getMatrices(), (float) (cx - glyphWidth * 2.6D), (float) (cy - 18.0D));
+        MatrixHelper.scale(ctx.getMatrices(), 5.2F, 5.2F);
         RenderUtil.drawGradientText(ctx, tr, a, 0, 0,
                 AzyronConstants.COLOR_PURPLE_BRIGHT, AzyronConstants.COLOR_ELECTRIC, true);
-        ctx.getMatrices().popMatrix();
+        MatrixHelper.popMatrix(ctx.getMatrices());
     }
 
     private static void drawRing(DrawContext ctx, int cx, int cy, int radius, int thickness, int color) {

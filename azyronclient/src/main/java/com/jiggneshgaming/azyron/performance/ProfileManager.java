@@ -81,7 +81,8 @@ public final class ProfileManager {
         try {
             GraphicsMode[] values = GraphicsMode.values();
             GraphicsMode target = values[Math.max(0, Math.min(values.length - 1, mode))];
-            net.minecraft.client.option.SimpleOption<GraphicsMode> preset = options.getPreset();
+            net.minecraft.client.option.SimpleOption<GraphicsMode> preset =
+                    com.jiggneshgaming.azyron.compat.OptionsCompat.graphicsModeOption(options);
             if (preset == null) {
                 // Option not constructed yet (early startup) — skip, never NPE.
                 LOGGER.warn("The graphics preset option is not available yet — skipping graphics mode {}.", mode);

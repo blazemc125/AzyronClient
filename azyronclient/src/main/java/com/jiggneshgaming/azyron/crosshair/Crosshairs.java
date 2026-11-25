@@ -8,6 +8,7 @@ import net.minecraft.client.gui.DrawContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jiggneshgaming.azyron.compat.MatrixHelper;
 /**
  * AZYRON CLIENT — custom crosshair.
  *
@@ -185,10 +186,10 @@ public final class Crosshairs {
         // Reuse the in-game renderer but shift coordinates by offsetting draw calls:
         // simplest honest preview = draw current settings centered at (centerX, centerY)
         // using a clipped translated matrix.
-        ctx.getMatrices().pushMatrix();
-        ctx.getMatrices().translate((float) (centerX - width / 2), (float) (centerY - height / 2));
+        MatrixHelper.pushMatrix(ctx.getMatrices());
+        MatrixHelper.translate(ctx.getMatrices(), (float) (centerX - width / 2), (float) (centerY - height / 2));
         render(ctx);
-        ctx.getMatrices().popMatrix();
+        MatrixHelper.popMatrix(ctx.getMatrices());
     }
 
     private static void fillCircle(DrawContext ctx, int cx, int cy, int radius, int color, boolean filled) {

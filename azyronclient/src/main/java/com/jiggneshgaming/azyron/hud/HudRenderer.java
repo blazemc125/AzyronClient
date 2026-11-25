@@ -26,6 +26,7 @@ import net.minecraft.item.ItemStack;
 import java.util.Collection;
 import java.util.UUID;
 
+import com.jiggneshgaming.azyron.compat.MatrixHelper;
 /**
  * AZYRON CLIENT — HUD renderer.
  *
@@ -98,12 +99,12 @@ public final class HudRenderer {
 
         float scale = (float) effectiveScale(id);
         if (Math.abs(scale - 1.0F) > 0.01F) {
-            ctx.getMatrices().pushMatrix();
-            ctx.getMatrices().translate((float) x, (float) y);
-            ctx.getMatrices().scale(scale, scale);
-            ctx.getMatrices().translate((float) -x, (float) -y);
+            MatrixHelper.pushMatrix(ctx.getMatrices());
+            MatrixHelper.translate(ctx.getMatrices(), (float) x, (float) y);
+            MatrixHelper.scale(ctx.getMatrices(), scale, scale);
+            MatrixHelper.translate(ctx.getMatrices(), (float) -x, (float) -y);
             renderElementInner(ctx, textRenderer, client, id, demo, x, y, size[0], size[1]);
-            ctx.getMatrices().popMatrix();
+            MatrixHelper.popMatrix(ctx.getMatrices());
         } else {
             renderElementInner(ctx, textRenderer, client, id, demo, x, y, size[0], size[1]);
         }

@@ -17,7 +17,7 @@ import com.jiggneshgaming.azyron.sprint.ToggleSprint;
 import com.jiggneshgaming.azyron.zoom.ZoomManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import com.jiggneshgaming.azyron.compat.HudCompat;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
@@ -57,7 +57,7 @@ public final class AzyronClientMod implements ClientModInitializer {
 
         // 3) HUD hook — draws every enabled AZYRON element after vanilla HUD.
         try {
-            HudElementRegistry.addLast(Identifier.of("azyronclient", "hud"),
+            HudCompat.register(Identifier.of("azyronclient", "hud"),
                     (context, tickCounter) -> {
                         try {
                             HudRenderer.renderHud(context);
