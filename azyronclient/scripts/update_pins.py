@@ -12,8 +12,10 @@ What IS refreshed:
 Network failures are non-fatal: the script keeps the existing pins and exits
 with status 0 so offline builds still use the committed values.
 
-Usage:  python3 scripts/update_pins.py [--check-only]
-  --check-only   print the resolved pins, do not rewrite gradle.properties
+Usage:  python3 scripts/update_pins.py [--check-only] [--properties <path>]
+  --check-only           print the resolved pins, do not rewrite the properties file
+  --properties <path>    rewrite a gradle/versions/<mc>.properties file instead of
+                         gradle.properties (used by the multi-version CI matrix)
 """
 import json
 import re
@@ -54,11 +56,19 @@ def set_property(text, name, value):
 
 
 def main():
-    check_only = "--check-only" in sys.argv
-    original = read_properties(PROPERTIES)
+    argv = sys.argv[1:]
+    check_only = "--check-only" in argv
+    properties_path = PROPERTIES
+    if "--properties" in argv:
+        index = argv.index("--properties")
+        if index + 1 >= len(argv):
+            print("ERROR: --properties requires a path", file=sys.stderr)
+            return 1
+        properties_path = argv[index + 1]
+    original = read_properties(properties_path)
     mc = get_property(original, "minecraft_version")
     if not mc:
-        print("ERROR: minecraft_version missing from gradle.properties", file=sys.stderr)
+        print("ERROR: minecraft_version missing from %s" % properties_path, file=sys.stderr)
         return 1
 
     resolved = {}
@@ -117,11 +127,11 @@ def main():
         if value:
             updated = set_property(updated, name, value)
     if updated != original:
-        with open(PROPERTIES, "w", encoding="utf-8") as handle:
+        with open(properties_path, "w", encoding="utf-8") as handle:
             handle.write(updated)
-        print("gradle.properties updated.")
+        print("%s updated." % properties_path)
     else:
-        print("gradle.properties already up to date.")
+        print("%s already up to date." % properties_path)
     return 0
 
 

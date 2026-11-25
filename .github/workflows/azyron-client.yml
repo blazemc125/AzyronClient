@@ -1,11 +1,18 @@
 name: AZYRON CLIENT
 
-# Builds the AZYRON CLIENT Fabric mod in azyronclient/.
-# Runs the offline core self-test first (fast gate), then a full
-# Loom build against the pinned Minecraft / Fabric versions, then
-# publishes the artifacts and attaches BOTH the .jar and the .mrpack
-# to a DRAFT GitHub Release. The draft is never published automatically —
-# a human releases it.
+# Builds the AZYRON CLIENT V2 Fabric mod in azyronclient/ against EVERY
+# supported Minecraft Java version (the full 1.21 release line — see
+# azyronclient/gradle/versions/*.properties).
+#
+# One product, one feature set: the build differs only in the toolchain pins
+# (gradle/versions/<mc>.properties) and the input-API shim selected by
+# mc_profile (modern = 1.21.9..1.21.11, legacy = 1.21..1.21.8).
+#
+# Runs the offline core self-test first (fast gate), then a full Loom build
+# per target version, packages a .mrpack per version, uploads one artifact per
+# version, and (only when manually dispatched) attaches ALL of them to a
+# DRAFT GitHub release. The draft is never published automatically — a human
+# releases it.
 
 on:
   workflow_dispatch:
@@ -44,9 +51,15 @@ jobs:
           java -cp build/ci-core CoreSelfTest
 
   build:
-    name: Build mod + modpack
+    name: Build MC ${{ matrix.mc }}
     needs: core-tests
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mc:
+          - '1.21.11'
+          - '1.21.4'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -57,15 +70,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Refresh Fabric version pins
+      - name: Refresh Fabric version pins (MC ${{ matrix.mc }})
         working-directory: ${{ env.MOD_DIR }}
-        run: python3 scripts/update_pins.py
-      - name: Build the Fabric mod
+        run: python3 scripts/update_pins.py --properties gradle/versions/${{ matrix.mc }}.properties
+      - name: Build the Fabric mod (MC ${{ matrix.mc }})
         working-directory: ${{ env.MOD_DIR }}
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew build --stacktrace 2>&1 | tee /tmp/azyron-build.log
+          ./gradlew build -Pmc_version=${{ matrix.mc }} --stacktrace 2>&1 | tee /tmp/azyron-build-${{ matrix.mc }}.log
       - name: Report build failure to commit (CI diagnostics)
         if: failure()
         working-directory: ${{ env.MOD_DIR }}
@@ -74,77 +87,76 @@ jobs:
         run: |
           set -euo pipefail
           strip_ansi() { sed -e 's/\x1b\[[0-9;]*m//g'; }
-          # Extract javac-style diagnostics (path:line: error: ...) with context.
           mkdir -p /tmp/azyron-diag
-          strip_ansi < /tmp/azyron-build.log > /tmp/azyron-diag/full.log || true
+          strip_ansi < /tmp/azyron-build-${{ matrix.mc }}.log > /tmp/azyron-diag/full.log || true
           ERRORS=$(grep -E '(^|[[:space:]])[0-9]+ errors?$|: error: ' /tmp/azyron-diag/full.log | head -80 || true)
           ERROR_BLOCK=$(grep -E -A4 ': error: ' /tmp/azyron-diag/full.log | head -400 || true)
           FAILURE_BLOCK=$(grep -E -B2 -A12 'What went wrong|Execution failed' /tmp/azyron-diag/full.log | head -80 || true)
           FALLBACK=$(tail -n 120 /tmp/azyron-diag/full.log)
-          BODY=$(printf '**AZYRON CI build failed** — step: Build the Fabric mod.\n\n### javac errors (file:line: error):\n```\n%s\n```\n\n### error details:\n```\n%s\n```\n\n### gradle failure summary:\n```\n%s\n```\n\n### last 120 lines:\n```\n%s\n```' "$ERRORS" "$ERROR_BLOCK" "$FAILURE_BLOCK" "$FALLBACK")
-          # GitHub comment limit ~65536; trim aggressively if needed.
+          BODY=$(printf '**AZYRON CI build failed** — MC %s — step: Build the Fabric mod.\n\n### javac errors (file:line: error):\n```\n%s\n```\n\n### error details:\n```\n%s\n```\n\n### gradle failure summary:\n```\n%s\n```\n\n### last 120 lines:\n```\n%s\n```' "${{ matrix.mc }}" "$ERRORS" "$ERROR_BLOCK" "$FAILURE_BLOCK" "$FALLBACK")
           printf '%s' "$BODY" | head -c 60000 > /tmp/azyron-diag/body.txt
           gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/comments" \
             -F body=@/tmp/azyron-diag/body.txt >/dev/null
           echo "Diagnostics comment posted on commit $GITHUB_SHA"
       - name: Show resolved pins
         working-directory: ${{ env.MOD_DIR }}
-        run: ./gradlew printPins
-      - name: Package .mrpack and release JAR
+        run: ./gradlew printPins -Pmc_version=${{ matrix.mc }}
+      - name: Package .mrpack and release JAR (MC ${{ matrix.mc }})
         working-directory: ${{ env.MOD_DIR }}
         run: |
           set -euo pipefail
-          MC=$(grep '^minecraft_version=' gradle.properties | cut -d= -f2)
-          LOADER=$(grep '^loader_version=' gradle.properties | cut -d= -f2)
-          VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
-          JAR=$(ls build/libs/azyronclient-*.jar | grep -v -E 'sources|dev' | head -1)
+          MC=${{ matrix.mc }}
+          LOADER=$(grep '^loader_version=' gradle/versions/$MC.properties | cut -d= -f2)
+          VERSION=$(grep '^mod_version=' gradle.properties | cut -d= -f2)+mc$MC
+          JAR=$(ls build/libs/azyronclient-*+mc${MC}.jar | grep -v -E 'sources|dev' | head -1)
           mkdir -p dist
           python3 scripts/make_mrpack.py \
             --jar "$JAR" \
             --out "dist/azyron-client-${VERSION}.mrpack" \
             --mc "$MC" --version "$VERSION" --loader "$LOADER" \
             --icon docs/azyron-icon-256.png
-          cp "$JAR" "dist/azyronclient-${VERSION}.jar"
+          cp "$JAR" "dist/"
           ls -la dist
-      - name: Upload artifact
+      - name: Upload artifact (MC ${{ matrix.mc }})
         uses: actions/upload-artifact@v4
         with:
-          name: azyron-client
+          name: azyron-client-mc${{ matrix.mc }}
           path: |
-            ${{ env.MOD_DIR }}/dist/azyron-client-*.mrpack
-            ${{ env.MOD_DIR }}/dist/azyronclient-*.jar
+            ${{ env.MOD_DIR }}/dist/azyron-client-*+mc${{ matrix.mc }}.mrpack
+            ${{ env.MOD_DIR }}/dist/azyronclient-*+mc${{ matrix.mc }}.jar
           if-no-files-found: error
 
   draft-release:
     name: Attach files to a DRAFT GitHub release
-    # Runs only when explicitly dispatched — attaches the freshly built .jar
-    # and .mrpack to a NEW draft release for V2. Never publishes, never touches V1.
+    # Runs only when explicitly dispatched — attaches the freshly built jars
+    # and .mrpacks for EVERY supported Minecraft version to a NEW draft
+    # release. Never publishes, never touches the V1/V2.0.0 releases.
     if: github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      TAG: azyronclient-v2.0.0
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: azyron-client
+          pattern: azyron-client-mc*
+          merge-multiple: true
           path: dist
       - name: Create or update the DRAFT release
         run: |
           set -euo pipefail
           ls -la dist
-          JAR=$(ls dist/azyronclient-*.jar | head -1)
-          MRPACK=$(ls dist/azyron-client-*.mrpack | head -1)
-          NOTES='AZYRON CLIENT V2 — PERFORMANCE. SMOOTHNESS. STYLE. Built by CI from the azyronclient/ directory of this branch. Artifacts: azyronclient-2.0.0.jar (Fabric mod for Minecraft 1.21.11, drop into mods/) and azyron-client-2.0.0.mrpack (Modrinth modpack: AZYRON CLIENT V2 + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS). Verification scope: see azyronclient/TESTING-REPORT.md. DRAFT — not published. Publishing is a manual step.'
+          VERSION=$(grep '^mod_version=' azyronclient/gradle.properties | cut -d= -f2)
+          TAG="azyronclient-v${VERSION}"
+          NOTES='AZYRON CLIENT V2 — PERFORMANCE. SMOOTHNESS. STYLE. One unified client (Fabric, Minecraft 1.21 through 1.21.11), built by CI from the azyronclient/ directory of this branch. Artifacts: azyronclient-'"${VERSION}"'+mc<version>.jar (Fabric mod, drop into mods/) and azyron-client-'"${VERSION}"'+mc<version>.mrpack (Modrinth modpack: AZYRON CLIENT V2 + Fabric API, Sodium, Lithium, FerriteCore, EntityCulling, MoreCulling, Dynamic FPS) — one pair per supported Minecraft version. Verification scope: see azyronclient/TESTING-REPORT.md and azyronclient/V2-REPORT.md. DRAFT — not published. Publishing is a manual step.'
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Draft release $TAG already exists — refreshing assets."
-            gh release upload "$TAG" "$JAR" "$MRPACK" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" "$JAR" "$MRPACK" \
+            gh release create "$TAG" dist/* \
               --draft \
               --target "$GITHUB_SHA" \
-              --title "AZYRON CLIENT V2 v2.0.0 (DRAFT)" \
+              --title "AZYRON CLIENT V2 v${VERSION} (DRAFT)" \
               --notes "$NOTES" \
               --repo "$GITHUB_REPOSITORY"
           fi

@@ -391,10 +391,7 @@ public final class AzyronProfilesScreen extends BaseAzyronScreen {
     /* ================= events ================= */
 
     @Override
-    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             // name box focus
             if (nameBox.contains(mouseX, mouseY)) {
@@ -431,23 +428,23 @@ public final class AzyronProfilesScreen extends BaseAzyronScreen {
                 ey += 17;
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean charTyped(net.minecraft.client.input.CharInput input) {
+    protected boolean azyronChar(char chr, int modifiers) {
         if (nameBox.focused) {
-            nameBox.charTyped((char) input.codepoint());
+            nameBox.charTyped(chr);
             return true;
         }
-        return super.charTyped(input);
+        return super.azyronChar(chr, modifiers);
     }
 
     @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        if (nameBox.focused && nameBox.keyPressed(input.key())) {
+    protected boolean azyronKey(int keyCode, int scanCode, int modifiers) {
+        if (nameBox.focused && nameBox.keyPressed(keyCode)) {
             return true;
         }
-        return super.keyPressed(input);
+        return super.azyronKey(keyCode, scanCode, modifiers);
     }
 }

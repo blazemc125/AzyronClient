@@ -14,9 +14,6 @@ import net.minecraft.client.gui.screen.Screen;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
 
 /**
  * AZYRON CLIENT — the in-game Mods Menu (Right Shift).
@@ -245,10 +242,7 @@ public final class AzyronModsMenuScreen extends BaseAzyronScreen {
     /* ---------------------------------------------------------- */
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             // Search focus
             if (search.contains(mouseX, mouseY)) {
@@ -286,7 +280,7 @@ public final class AzyronModsMenuScreen extends BaseAzyronScreen {
                 y += ROW_HEIGHT;
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 
     @Override
@@ -296,22 +290,20 @@ public final class AzyronModsMenuScreen extends BaseAzyronScreen {
     }
 
     @Override
-    public boolean charTyped(CharInput input) {
-        char chr = (char) input.codepoint();
+    protected boolean azyronChar(char chr, int modifiers) {
         if (search.focused) {
             search.charTyped(chr);
             scroll = 0;
             return true;
         }
-        return super.charTyped(input);
+        return super.azyronChar(chr, modifiers);
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
-        int keyCode = input.key();
+    protected boolean azyronKey(int keyCode, int scanCode, int modifiers) {
         if (search.focused && search.keyPressed(keyCode)) {
             return true;
         }
-        return super.keyPressed(input);
+        return super.azyronKey(keyCode, scanCode, modifiers);
     }
 }

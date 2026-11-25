@@ -240,10 +240,7 @@ public final class AzyronFpsScreen extends BaseAzyronScreen {
 
     /* Background optimization toggle lives on this page too (it shares the config keys). */
     @Override
-    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             int chipX = Math.max(12, (this.width - 470) / 2);
             int chipY = 86;
@@ -255,6 +252,6 @@ public final class AzyronFpsScreen extends BaseAzyronScreen {
                 return true;
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 }

@@ -7,13 +7,12 @@ import com.jiggneshgaming.azyron.util.Texts;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
+import com.jiggneshgaming.azyron.compat.AzyronScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.input.KeyInput;
 
 /**
  * AZYRON CLIENT — shared scaffold for all AZYRON screens.
@@ -21,7 +20,7 @@ import net.minecraft.client.input.KeyInput;
  * <p>Renders the premium menu background, footer chrome and dispatches
  * clicks to {@link AzyronButton} actions.</p>
  */
-public abstract class BaseAzyronScreen extends Screen {
+public abstract class BaseAzyronScreen extends AzyronScreen {
 
     protected final Screen backTarget;
     protected final List<AzyronButton> buttons = new ArrayList<AzyronButton>();
@@ -151,10 +150,7 @@ public abstract class BaseAzyronScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             for (AzyronButton btn : buttons) {
                 if (btn.enabled && btn.contains(mouseX, mouseY) && btn.action != null) {
@@ -167,13 +163,12 @@ public abstract class BaseAzyronScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 
     /** Android Back (mapped to ESC by the launcher) and desktop ESC. */
     @Override
-    public boolean keyPressed(KeyInput input) {
-        int keyCode = input.key();
+    protected boolean azyronKey(int keyCode, int scanCode, int modifiers) {
         // GLFW_KEY_ESCAPE — sub-screens return to their parent, top-level closes.
         if (keyCode == 256) {
             try {
@@ -183,7 +178,7 @@ public abstract class BaseAzyronScreen extends Screen {
             }
             return true;
         }
-        return super.keyPressed(input);
+        return super.azyronKey(keyCode, scanCode, modifiers);
     }
 
     /**

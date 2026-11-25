@@ -10,7 +10,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.Click;
 
 /**
  * AZYRON CLIENT — cosmetics.
@@ -297,33 +296,26 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
     /* --------------------------- events ---------------------------- */
 
     @Override
-    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronDrag(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (draggingIntensity && button == 0) {
             AzyronConfig.get().auraIntensity = intensitySlider.valueForMouse(mouseX);
             return true;
         }
-        return super.mouseDragged(click, deltaX, deltaY);
+        return super.azyronDrag(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
-        int button = click.button();
+    protected boolean azyronRelease(double mouseX, double mouseY, int button) {
         if (draggingIntensity) {
             draggingIntensity = false;
             AzyronConfig.save();
             return true;
         }
-        return super.mouseReleased(click);
+        return super.azyronRelease(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             int ctlY = this.height - 76;
             int ctlX = Math.max(24, (int) (this.width * 0.06D));
@@ -361,6 +353,6 @@ public final class AzyronCosmeticsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 }

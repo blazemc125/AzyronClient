@@ -9,10 +9,8 @@ import com.jiggneshgaming.azyron.util.Texts;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.input.KeyInput;
+import com.jiggneshgaming.azyron.compat.AzyronScreen;
 import com.jiggneshgaming.azyron.menu.AzyronMainMenuScreen;
 
 /**
@@ -21,7 +19,7 @@ import com.jiggneshgaming.azyron.menu.AzyronMainMenuScreen;
  * <p>Full-screen layout screen: drag any HUD element to reposition it.
  * Positions are written to the config immediately on mouse release.</p>
  */
-public final class HudEditorScreen extends Screen {
+public final class HudEditorScreen extends AzyronScreen {
 
     private static final org.slf4j.Logger LOGGER =
             org.slf4j.LoggerFactory.getLogger("azyronclient/hud-editor");
@@ -172,10 +170,7 @@ public final class HudEditorScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         int footerY = this.height - 26;
         int btnW = 110;
         int resetX = this.width / 2 - btnW - 8;
@@ -246,14 +241,11 @@ public final class HudEditorScreen extends Screen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronDrag(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (resizing != null && button == 0) {
             AzyronConfigModel config = AzyronConfig.get();
             AzyronConfigModel.HudPosition pos = config.positionOf(resizing);
@@ -273,14 +265,11 @@ public final class HudEditorScreen extends Screen {
             pos.y = (int) mouseY - dragOffsetY;
             return true;
         }
-        return super.mouseDragged(click, deltaX, deltaY);
+        return super.azyronDrag(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronRelease(double mouseX, double mouseY, int button) {
         if (resizing != null && button == 0) {
             AzyronConfigModel.HudPosition pos = AzyronConfig.get().positionOf(resizing);
             int[] size = HudRenderer.measureScaled(resizing, true);
@@ -304,17 +293,16 @@ public final class HudEditorScreen extends Screen {
             AzyronConfig.save();
             return true;
         }
-        return super.mouseReleased(click);
+        return super.azyronRelease(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
-        int keyCode = input.key();
+    protected boolean azyronKey(int keyCode, int scanCode, int modifiers) {
         if (keyCode == 256) { // GLFW_KEY_ESCAPE
             closeToSafeScreen();
             return true;
         }
-        return super.keyPressed(input);
+        return super.azyronKey(keyCode, scanCode, modifiers);
     }
 
     @Override

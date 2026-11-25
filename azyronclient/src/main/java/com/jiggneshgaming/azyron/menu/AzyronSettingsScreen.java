@@ -18,7 +18,6 @@ import net.minecraft.client.gui.screen.Screen;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.client.gui.Click;
 
 /**
  * AZYRON CLIENT — global settings screen.
@@ -477,10 +476,7 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
     /* --------------------------- events ---------------------------- */
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             layoutRows();
             AzyronConfigModel config = AzyronConfig.get();
@@ -522,14 +518,11 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean mouseDragged(Click click, double deltaX, double deltaY) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronDrag(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (dragging != null && button == 0) {
             for (Row row : rows) {
                 if (row instanceof SliderRow && ((SliderRow) row).slider == dragging) {
@@ -538,19 +531,16 @@ public final class AzyronSettingsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseDragged(click, deltaX, deltaY);
+        return super.azyronDrag(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     @Override
-    public boolean mouseReleased(Click click) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronRelease(double mouseX, double mouseY, int button) {
         if (dragging != null) {
             dragging = null;
             AzyronConfig.save();
             return true;
         }
-        return super.mouseReleased(click);
+        return super.azyronRelease(mouseX, mouseY, button);
     }
 }

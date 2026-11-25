@@ -178,10 +178,7 @@ public final class AzyronQuickSettingsScreen extends BaseAzyronScreen {
     /* ------------------------- click handling ------------------------ */
 
     @Override
-    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             int panelW = Math.min(560, this.width - 20);
             int panelX = Math.max(10, (this.width - panelW) / 2);
@@ -207,6 +204,6 @@ public final class AzyronQuickSettingsScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 }

@@ -440,10 +440,7 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
     /* ================= events ================= */
 
     @Override
-    public boolean mouseClicked(net.minecraft.client.gui.Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    protected boolean azyronClick(double mouseX, double mouseY, int button) {
         if (button == 0) {
             int panelW = Math.min(680, this.width - 20);
             int panelX = Math.max(10, (this.width - panelW) / 2);
@@ -485,7 +482,7 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
                 }
             }
         }
-        return super.mouseClicked(click, doubled);
+        return super.azyronClick(mouseX, mouseY, button);
     }
 
     @Override
@@ -498,22 +495,21 @@ public final class AzyronModManagerScreen extends BaseAzyronScreen {
     }
 
     @Override
-    public boolean charTyped(net.minecraft.client.input.CharInput input) {
+    protected boolean azyronChar(char chr, int modifiers) {
         if (search.focused) {
-            search.charTyped((char) input.codepoint());
+            search.charTyped(chr);
             scroll = 0;
             selected = 0;
             return true;
         }
-        return super.charTyped(input);
+        return super.azyronChar(chr, modifiers);
     }
 
     @Override
-    public boolean keyPressed(net.minecraft.client.input.KeyInput input) {
-        int keyCode = input.key();
+    protected boolean azyronKey(int keyCode, int scanCode, int modifiers) {
         if (search.focused && search.keyPressed(keyCode)) {
             return true;
         }
-        return super.keyPressed(input);
+        return super.azyronKey(keyCode, scanCode, modifiers);
     }
 }
