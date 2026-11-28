@@ -10,9 +10,9 @@
  */
 
 plugins {
-    // Loom 1.13 reads the unpick metadata shipped with yarn. (1.14 requires
-    // Gradle 9.2; 1.13 is the newest line working on Gradle 8.14.)
-    id 'fabric-loom' version '1.13.+'
+    // Loom 1.19 supports the Gradle 9 toolchain needed by Minecraft 26.x.
+    // Existing 1.21.x profiles remain pinned to their original game/Fabric APIs.
+    id 'fabric-loom' version '1.19.4'
     id 'maven-publish'
 }
 
@@ -25,6 +25,7 @@ plugins {
  *
  *   modern = Minecraft 1.21.9 .. 1.21.11  (Click / KeyInput / CharInput API)
  *   legacy = Minecraft 1.21   .. 1.21.8   (classic mouse/key/char callbacks)
+ *   mojang = Minecraft 26.x                 (official Mojang mappings; API port path)
  *
  * Default build targets 1.21.11 (the latest stable). CI builds every entry in
  * gradle/versions/*.properties and produces one jar + mrpack per target:
@@ -46,8 +47,12 @@ def req = { String key ->
     return value.trim()
 }
 def mcProfile = req('mc_profile')
-if (!(mcProfile in ['modern', 'legacy'])) {
-    throw new GradleException("gradle/versions/${mcVersion}.properties: mc_profile must be 'modern' or 'legacy'")
+def mappingType = vprops.getProperty('mapping_type', 'yarn').trim()
+if (!(mcProfile in ['modern', 'legacy', 'mojang'])) {
+    throw new GradleException("gradle/versions/${mcVersion}.properties: invalid mc_profile '${mcProfile}'")
+}
+if (!(mappingType in ['yarn', 'official'])) {
+    throw new GradleException("gradle/versions/${mcVersion}.properties: mapping_type must be 'yarn' or 'official'")
 }
 
 ext {
@@ -57,6 +62,7 @@ ext {
     fabric_api_version = req('fabric_api_version')
     java_version = req('java_version')
     mc_profile = mcProfile
+    mapping_type = mappingType
     minecraft_dep = req('minecraft_dep')
 }
 
@@ -93,7 +99,11 @@ loom {
 dependencies {
     // Yarn-mapped Minecraft + Fabric toolchain.
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    if (project.mapping_type == 'official') {
+        mappings loom.officialMojangMappings()
+    } else {
+        mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    }
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
@@ -136,6 +146,7 @@ tasks.register('printPins') {
         println "loader_version=${project.loader_version}"
         println "fabric_api_version=${project.fabric_api_version}"
         println "mc_profile=${project.mc_profile}"
+        println "mapping_type=${project.mapping_type}"
         println "minecraft_dep=${project.minecraft_dep}"
         println "archive_version=${project.version}"
     }
