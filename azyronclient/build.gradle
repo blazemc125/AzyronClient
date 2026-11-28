@@ -99,11 +99,11 @@ loom {
 dependencies {
     // Yarn-mapped Minecraft + Fabric toolchain.
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    if (project.mapping_type == 'yarn') {
+    if (project.mapping_type == 'official') {
+        mappings loom.officialMojangMappings()
+    } else {
         mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     }
-    // Minecraft 26.x is distributed with official Mojang names; Loom uses those
-    // directly, so an external Yarn/official remapping artifact must not be applied.
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
