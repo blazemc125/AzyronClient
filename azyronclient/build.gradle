@@ -108,15 +108,8 @@ dependencies {
     }
     // Minecraft 26.x is distributed with official Mojang names; Loom uses those
     // directly, so an external Yarn/official remapping artifact must not be applied.
-    if (project.mapping_type == 'official') {
-        // Loom's no-remap plugin exposes ordinary Gradle dependency configs;
-        // 26.x loader/API jars are already in official names.
-        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-        implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    } else {
-        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-        modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-    }
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
     // Gson is bundled with Minecraft at runtime.
     implementation 'com.google.code.gson:gson:2.10.1'
