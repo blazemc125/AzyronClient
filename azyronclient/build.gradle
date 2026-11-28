@@ -10,9 +10,11 @@
  */
 
 plugins {
-    // Loom 1.19 supports the Gradle 9 toolchain needed by Minecraft 26.x.
-    // Existing 1.21.x profiles remain pinned to their original game/Fabric APIs.
-    id 'fabric-loom' version '1.19.4'
+    // Loom 1.19 supports Gradle 9 and has separate remap/no-remap modes:
+    // legacy Yarn profiles use intermediary remapping, while Minecraft 26.x
+    // ships official-name jars and uses Loom's no-remap plugin.
+    id 'net.fabricmc.fabric-loom' version '1.19.4' apply false
+    id 'net.fabricmc.fabric-loom-remap' version '1.19.4' apply false
     id 'maven-publish'
 }
 
@@ -55,6 +57,8 @@ if (!(mappingType in ['yarn', 'official'])) {
     throw new GradleException("gradle/versions/${mcVersion}.properties: mapping_type must be 'yarn' or 'official'")
 }
 
+apply plugin: (mappingType == 'official' ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap')
+
 ext {
     minecraft_version = req('minecraft_version')
     yarn_mappings = req('yarn_mappings')
@@ -87,12 +91,6 @@ repositories {
 }
 
 loom {
-    if (project.mapping_type == 'official') {
-        // Minecraft 26.x ships official-name jars; do not route through
-        // intermediary/Yarn mappings for these source sets.
-        productionNamespace = 'official'
-        useIntermediateMappings = false
-    }
     // NOTE: single (client) source set — everything in src/main/java is
     // client-only, which is the common Loom setup for client mods.
     mixin {
