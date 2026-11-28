@@ -96,8 +96,12 @@ loom {
     mixin {
         defaultRefmapName = 'azyronclient.refmap.json'
     }
-    // Read-only access to three private members resolved at compile time.
-    accessWidenerPath = file('src/main/resources/azyronclient.accesswidener')
+    // The existing access widener targets Yarn-named classes and is applied
+    // only to the 1.21.x mapped source set. The official 26.x path uses
+    // public Mojang APIs and must not consume that named-namespace file.
+    if (project.mapping_type == 'yarn') {
+        accessWidenerPath = file('src/main/resources/azyronclient.accesswidener')
+    }
 }
 
 dependencies {
