@@ -70,26 +70,21 @@ def main():
     if not mc:
         print("ERROR: minecraft_version missing from %s" % properties_path, file=sys.stderr)
         return 1
-    mapping_type = get_property(original, "mapping_type") or "yarn"
 
     resolved = {}
     errors = []
 
-    # --- mappings: newest Yarn build for Yarn profiles; official mappings need no pin ---
-    if mapping_type == "yarn":
-        try:
-            yarn_rows = fetch_json(META_YARN.format(mc=mc))
-            builds = [row for row in yarn_rows
-                      if isinstance(row, dict) and str(row.get("version", "")).startswith(mc + "+")]
-            if not builds:
-                builds = yarn_rows
-            builds.sort(key=lambda row: row.get("build", 0), reverse=True)
-            resolved["yarn_mappings"] = builds[0]["version"]
-        except Exception as exc:  # noqa: BLE001 - keep build alive, keep old pin
-            errors.append("yarn: %s" % exc)
-    elif mapping_type != "official":
-        print("ERROR: unsupported mapping_type %r" % mapping_type, file=sys.stderr)
-        return 1
+    # --- yarn: latest build for the target MC ---
+    try:
+        yarn_rows = fetch_json(META_YARN.format(mc=mc))
+        builds = [row for row in yarn_rows
+                  if isinstance(row, dict) and str(row.get("version", "")).startswith(mc + "+")]
+        if not builds:
+            builds = yarn_rows
+        builds.sort(key=lambda row: row.get("build", 0), reverse=True)
+        resolved["yarn_mappings"] = builds[0]["version"]
+    except Exception as exc:  # noqa: BLE001 - keep build alive, keep old pin
+        errors.append("yarn: %s" % exc)
 
     # --- loader: latest stable ---
     try:
