@@ -87,6 +87,12 @@ repositories {
 }
 
 loom {
+    if (project.mapping_type == 'official') {
+        // Minecraft 26.x ships official-name jars; do not route through
+        // intermediary/Yarn mappings for these source sets.
+        productionNamespace = 'official'
+        useIntermediateMappings = false
+    }
     // NOTE: single (client) source set — everything in src/main/java is
     // client-only, which is the common Loom setup for client mods.
     mixin {
